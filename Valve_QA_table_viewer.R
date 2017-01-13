@@ -1,0 +1,892 @@
+#
+# coding UTF-8
+library(shiny)
+library(shinydashboard)
+library(RPostgreSQL)
+library(dplyr)
+library(googleVis)
+library(Gmisc)
+library(reshape)
+library(tidyr)
+
+
+rm(list = ls())
+
+#_________________________________________________________________________________________________________________________________________________
+### Usful functions ####
+#_________________________________________________________________________________________________________________________________________________
+okan_db_connect <- function() {
+  pw <- {
+    "root"
+  }
+  # loads the PostgreSQL driver
+  drv <- dbDriver("PostgreSQL")
+  # creates a connection to the postgres database
+  # note that "con" will be used later in each connection to the database
+  con <- dbConnect(drv, dbname = "qa_db",
+                   host = "localhost", port = 5432,
+                   user = "postgres", password = pw)
+  return(con)
+}
+
+
+okan_db_disconnect <- function(con){
+  dbDisconnect(con)
+}
+
+
+get_dn_list <- function(con){
+  x <- dbGetQuery(con,"SELECT dn_value FROM dn")
+  return(x)
+}
+
+
+get_control_type_list <- function(con){
+  x <- dbGetQuery(con,"SELECT control_type_def FROM valve_control_type")
+  Encoding(x$control_type_def) <- "UTF-8"
+  return(x)
+}
+
+
+get_control_type_info <- function(con, ct_name, type = NaN){
+  if(type == "4table"){
+    ct_select <- paste0("SELECT control_type_4code
+                        FROM valve_control_type
+                        WHERE control_type_def='", ct_name,"'")
+    x <- dbGetQuery(con,ct_select)
+    Encoding(x$control_type_4code) <- "UTF-8"
+    ct_name_out<- x$control_type_4code[1]
+    return(ct_name_out)
+  }else{
+    return(NaN)
+  }
+  
+}
+
+
+get_valve_list <- function(con){
+  dbSendQuery(con, "SET NAMES 'UTF-8'")
+  x <- dbGetQuery(con,"SELECT valve_id, valve_name FROM valve")
+  Encoding(x$valve_name) <- "UTF-8"
+  x <- x[order(x$valve_id),]
+  return(x)
+}
+
+
+get_valve_input_info <- function(con,valve_name, type=NaN){
+  if(type == "id"){
+    valve_select <- paste0("SELECT valve.valve_id
+                           FROM valve
+                           WHERE valve.valve_name='",valve_name,"'")
+    valve_id_frame <- dbGetQuery(con, valve_select)
+    valve_id <- valve_id_frame$valve_id[1]
+    return(valve_id)
+  }else if(type == "type") {
+    valve_select <- paste0( "SELECT valve.kind_of_valve
+                            FROM valve
+                            WHERE valve.valve_name='",valve_name,"'")
+    valve_type_frame <- dbGetQuery(con, valve_select)
+    valve_type <- valve_type_frame$kind_of_valve[1]
+    return(valve_type)
+  }else if(type == "type_def"){
+    valve_select <- paste0( "SELECT valve.def_kind_of_valve
+                            FROM valve
+                            WHERE valve.valve_name='",valve_name,"'")
+    valve_type_frame <- dbGetQuery(con, valve_select)
+    Encoding(valve_type_frame$def_kind_of_valve) <- "UTF-8"
+    valve_type <- valve_type_frame$def_kind_of_valve[1]
+    return(valve_type)
+  }else if(type == "control_type") {
+    valve_select <- paste0( "SELECT valve.organ_type
+                            FROM valve
+                            WHERE valve.valve_name='",valve_name,"'")
+    valve_control_type_frame <- dbGetQuery(con, valve_select)
+    valve_control_type <- valve_control_type_frame$organ_type[1]
+    return(valve_control_type)
+  }else {
+    return(NaN)
+  }
+}
+
+
+get_qa_type_list <- function(con){
+  x <- dbGetQuery(con, "SELECT valve_qa_type_id, valve_qa_type_name FROM valve_qa_type")
+  Encoding(x$valve_qa_type_name) <- "UTF-8"
+  return(x)
+}
+
+
+get_qa_input_info <- function(con, valve_qa_type_name, type = NaN) {
+  if(type == "id"){
+    qa_select <- paste0("SELECT valve_qa_type.valve_qa_type_id
+                        FROM valve_qa_type
+                        WHERE valve_qa_type.valve_qa_type_name='", valve_qa_type_name,"'")
+    qa_id_frame <- dbGetQuery(con, qa_select)
+    qa_type_id <- qa_id_frame$valve_qa_type_id[1]
+    return(qa_type_id)
+  }else if(type == "qa type name") {
+    qa_select <- paste0("SELECT valve_qa_type.valve_qa_type_4code
+                        FROM valve_qa_type
+                        WHERE valve_qa_type.valve_qa_type_name='", valve_qa_type_name,"'")
+    qa_type_name_frame <- dbGetQuery(con, qa_select)
+    qa_type_name <- qa_type_name_frame$valve_qa_type_4code[1]
+    return(qa_type_name)
+  }else {
+    return(NaN)
+  }
+}
+
+
+get_tempr_list <- function(con){
+  x <- dbGetQuery(con, "SELECT tempr_id, tempr_value_more_than_100 FROM tempr")
+  Encoding(x$tempr_value_more_than_100) <- "UTF-8"
+  return(x)
+}
+
+
+get_tempr_input_info <- function(con, tempr, type = NaN){
+  if(type == "id"){
+    tempr_select <- paste0("SELECT tempr.tempr_id
+                           FROM tempr
+                           WHERE tempr.tempr_value_more_than_100='",tempr,"'")
+    tempr_id_frame <- dbGetQuery(con, tempr_select)
+    tempr_id <- tempr_id_frame$tempr_id[1]
+    return(tempr_id)
+  }else {
+    return(NaN)
+  }
+}
+
+
+get_tempr_oper_list <- function(con){
+  x <- dbGetQuery(con, "SELECT tempr_operation_id, tempr_oper_value_more_than_20 FROM tempr_operation")
+  Encoding(x$tempr_oper_value_more_than_20) <- "UTF-8"
+  return(x)
+}
+
+
+get_tempr_oper_input_info <- function(con, tempr_oper, type = NaN){
+  if(type == "id"){
+    tempr_oper_select <- paste0("SELECT tempr_operation.tempr_operation_id
+                                FROM tempr_operation
+                                WHERE tempr_operation.tempr_oper_value_more_than_20='",tempr_oper,"'")
+    tempr_oper_id_frame <- dbGetQuery(con, tempr_oper_select)
+    tempr_oper_id <- tempr_oper_id_frame$tempr_operation_id[1]
+    return(tempr_oper_id)
+  }else {
+    return(NaN)
+  }
+}
+
+
+get_pressure_list <- function(con){
+  x <- dbGetQuery(con, "SELECT pressure_id, pressure_type FROM pressure")
+  Encoding(x$pressure_type) <- "UTF-8"
+  return(x)
+}
+
+
+get_pressure_input_info <- function(con, pressure, type = NaN){
+  if(type == "id"){
+    pressure_select <- paste0("SELECT pressure.pressure_id
+                              FROM pressure
+                              WHERE pressure.pressure_type='",pressure,"'")
+    pressure_id_frame <- dbGetQuery(con, pressure_select)
+    pressure_id <- pressure_id_frame$pressure_id[1]
+    return(pressure_id)
+  }else {
+    return(NaN)
+  }
+}
+
+
+get_detial_list <- function(con,valve_name){
+  valve <- which(valve_list$valve_name == valve_name, arr.ind = TRUE)
+  valve_id <- valve_list$valve_id[valve]
+  select_details <- paste0("SELECT detail.detail_id, detail.detail_name_rus, detail.detail_name_eng
+                           FROM detail INNER JOIN (valve INNER JOIN valve_detail ON valve.valve_id = valve_detail.valve_id) ON detail.detail_id = valve_detail.detail_id
+                           WHERE (((valve.valve_id)=", valve_id, "))"
+  )
+  x <- dbGetQuery(con, select_details)
+  Encoding(x$detail_name_rus) <- "UTF-8"
+  return(x)
+}
+
+
+get_detail_input_info <- function(con, detail, type = NaN){
+  if(type == "id"){
+    detail_select <- paste0("SELECT detail.detail_id
+                            FROM detail
+                            WHERE detail.detail_name_rus='",detail,"';
+                            ")
+    detail_id_frame <- dbGetQuery(con, detail_select)
+    detail_id <- detail_id_frame$detail_id[1]
+    return(detail_id)
+  }else if(type == "drawing name"){
+    detail_select <- paste0("SELECT detail.detail_figure_id
+                            FROM detail
+                            WHERE detail.detail_name_rus='",detail,"';
+                            ")
+    detail_fig_id_frame <- dbGetQuery(con, detail_select)
+    detail_fig_id <- detail_fig_id_frame$detail_figure_id[1]
+    return(detail_fig_id)
+  }else {
+    return(NaN)
+  }
+}
+
+
+get_overlay_detail_list <- function (con, valve_name){
+  select_details <- paste0("SELECT 
+                        	detail_for_con.detail_4con_name,
+                        	detail_for_con.detail_name_rus
+                           FROM 
+                           public.valve, 
+                           public.detail_for_con, 
+                           public.detail_4con_to_valve
+                           WHERE 
+                           valve.valve_id = detail_4con_to_valve.valve_id AND
+                           detail_for_con.detail_4con_id = detail_4con_to_valve.detail_4con_id AND
+                           detail_for_con.detail_4con_id >= '9' AND 
+                           valve.valve_name = '", valve_name, "';"
+  )
+  x <- dbGetQuery(con, select_details)
+  Encoding(x$detail_4con_name) <- "UTF-8"
+  Encoding(x$detail_name_rus) <- "UTF-8"
+  return(x)
+}
+
+
+get_material_list <- function(con, detail, valve_name){
+  detail_list <- get_detial_list(con, valve_name)
+  detail_frame_index <- which(detail_list$detail_name_rus == detail, arr.ind = TRUE)
+  detail_id <- detail_list$detail_id[detail_frame_index]
+  selected_material <- paste0("SELECT material.material_id, material.material_name
+                              FROM material INNER JOIN (detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) ON material.material_id = detail_material.material_id
+                              WHERE (((detail.detail_id)=",detail_id,"))"
+  )
+  x <- dbGetQuery(con, selected_material)
+  # Encoding(x$material_name) <- "UTF-8"
+  return(x)
+}
+
+
+get_material_input_info <- function(con, material, type = NaN){
+  if(type == "id"){
+    material_select <- paste0("SELECT material.material_id
+                              FROM material
+                              WHERE (((material.material_name)='",material,"'));
+                              ")
+    material_id_frame <- dbGetQuery(con,material_select)
+    material_id <- material_id_frame$material_id[1]
+    return(material_id)
+  }else if(type == "body material type") {
+    bmt_select <- paste0("SELECT
+                         meterial_type_general.material_type_4code
+                         FROM 
+                         public.detail, 
+                         public.meterial_type_general, 
+                         public.detail_material, 
+                         public.material
+                         WHERE 
+                         detail.detail_id = detail_material.detail_id AND
+                         detail_material.material_id = material.material_id AND
+                         material.material_type_general_id = meterial_type_general.material_type_general_id AND
+                         detail.detail_id = 1 AND 
+                         material.material_name = '", material,"';
+                         ")
+    bmt_frame <- dbGetQuery(con, bmt_select)
+    body_material_type <- bmt_frame$material_type_4code[1]
+    return(body_material_type)
+  }else if(type == "material type separate") {
+    select <- paste0("SELECT 
+                     material_type_separate.material_type_separete_id
+                     FROM 
+                     public.material, 
+                     public.meterial_type_general, 
+                     public.material_type_separate, 
+                     public.general_to_separate
+                     WHERE 
+                     material.material_type_general_id = meterial_type_general.material_type_general_id AND
+                     meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id AND
+                     general_to_separate.material_type_separete_id = material_type_separate.material_type_separete_id AND
+                     material.material_name = '",material,"';
+                      ")
+    material_id_frame <- dbGetQuery(con,select)
+    material_id <- material_id_frame$material_type_separete_id[1]
+    return(material_id)
+  } else {
+    return(NaN)
+  }
+}
+
+
+get_overlay_list <- function(con) {
+  select_overlay <- paste0("SELECT overlay_type.overlay_type_name
+                           FROM overlay_type")
+  x <- dbGetQuery(con, select_overlay)
+  Encoding(x$overlay_type_name) <- "UTF-8"
+  return(x)
+}
+
+
+get_distinct_names_of_qa_operations <- function(con){
+  x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular FROM list_of_operations")
+  Encoding(x$operation_name_particular) <- "UTF-8"
+  x <- x[order(x$operation_order),]
+  x$join_key <- as.integer(seq(1, length(x$operation_name_particular), by = 1))
+  return(x)
+}
+
+
+get_qa_operations_for_detail <-function(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material){
+  # get valve id
+  valve_id <- get_valve_input_info(con, valve_name, type = "id")
+  # get qa_type id
+  qa_type_id <- get_qa_input_info(con, qa_type, type = "id")
+  # get tempr_id
+  tempr_id <- get_tempr_input_info(con, tempr, type = "id")
+  # get tempr_oper_id
+  tempr_oper_id <- get_tempr_oper_input_info(con, tempr_oper, type = "id")
+  # get pressure_id
+  pressure_id <- get_pressure_input_info(con, pressure, type = "id")
+  # get detail id
+  detail_id <- get_detail_input_info(con, detail, type = "id")
+  # get material_id
+  material_id <- get_material_input_info(con, material, type = "id")
+  
+  # шпильки
+  if(detail_id == 5 || detail_id == 31){
+    material_type_separete_id <- 6
+    select_operations <- paste0("SELECT  list_of_operations.operation_order, list_of_operations.operation_name_4table
+                                FROM valve INNER JOIN ((valve_type INNER JOIN (valve_qa_type INNER JOIN (tempr INNER JOIN (tempr_operation INNER JOIN (pressure INNER JOIN (meterial_type_general INNER JOIN (material INNER JOIN ((material_type_separate INNER JOIN general_to_separate ON material_type_separate.material_type_separete_id = general_to_separate.material_type_separete_id) INNER JOIN (list_of_operations INNER JOIN (((detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) INNER JOIN ((detail_type INNER JOIN operations_qa_dependency ON detail_type.detail_type = operations_qa_dependency.detail_type) INNER JOIN detail_detail_type ON detail_type.detail_type = detail_detail_type.detail_type) ON detail.detail_id = detail_detail_type.detail_id) INNER JOIN valve_detail ON detail.detail_id = valve_detail.detail_id) ON list_of_operations.operation_id = operations_qa_dependency.operation_id) ON material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id) ON material.material_id = detail_material.material_id) ON (meterial_type_general.material_type_general_id = material.material_type_general_id) AND (meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id)) ON pressure.pressure_id = operations_qa_dependency.pressure_id) ON tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id) ON tempr.tempr_id = operations_qa_dependency.tempr_id) ON valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id) ON valve_type.valve_type_by_socet = detail_detail_type.valve_type_by_socet) INNER JOIN valve_id_to_socet ON valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet) ON (valve.valve_id = valve_id_to_socet.valve_id) AND (valve.valve_id = valve_detail.valve_id)
+                                WHERE (((material.material_id)=",material_id,") AND ((valve_qa_type.valve_qa_type_id)=
+                                ", qa_type_id,") AND ((valve.valve_id)=",valve_id,") AND ((detail.detail_id)=",detail_id,
+                                ") AND ((tempr.tempr_id)=",tempr_id,") AND ((tempr_operation.tempr_operation_id)=",tempr_oper_id,
+                                ") AND ((pressure.pressure_id)=",pressure_id,"
+                                ) AND ((material_type_separate.material_type_separete_id)=", material_type_separete_id,"));
+                                ")
+  }else if(detail_id == 6 || detail_id == 32){
+    material_type_separete_id <- 7
+    select_operations <- paste0("SELECT  list_of_operations.operation_order, list_of_operations.operation_name_4table
+                                FROM valve INNER JOIN ((valve_type INNER JOIN (valve_qa_type INNER JOIN (tempr INNER JOIN (tempr_operation INNER JOIN (pressure INNER JOIN (meterial_type_general INNER JOIN (material INNER JOIN ((material_type_separate INNER JOIN general_to_separate ON material_type_separate.material_type_separete_id = general_to_separate.material_type_separete_id) INNER JOIN (list_of_operations INNER JOIN (((detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) INNER JOIN ((detail_type INNER JOIN operations_qa_dependency ON detail_type.detail_type = operations_qa_dependency.detail_type) INNER JOIN detail_detail_type ON detail_type.detail_type = detail_detail_type.detail_type) ON detail.detail_id = detail_detail_type.detail_id) INNER JOIN valve_detail ON detail.detail_id = valve_detail.detail_id) ON list_of_operations.operation_id = operations_qa_dependency.operation_id) ON material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id) ON material.material_id = detail_material.material_id) ON (meterial_type_general.material_type_general_id = material.material_type_general_id) AND (meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id)) ON pressure.pressure_id = operations_qa_dependency.pressure_id) ON tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id) ON tempr.tempr_id = operations_qa_dependency.tempr_id) ON valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id) ON valve_type.valve_type_by_socet = detail_detail_type.valve_type_by_socet) INNER JOIN valve_id_to_socet ON valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet) ON (valve.valve_id = valve_id_to_socet.valve_id) AND (valve.valve_id = valve_detail.valve_id)
+                                WHERE (((material.material_id)=",material_id,") AND ((valve_qa_type.valve_qa_type_id)=
+                                ", qa_type_id,") AND ((valve.valve_id)=",valve_id,") AND ((detail.detail_id)=",detail_id,
+                                ") AND ((tempr.tempr_id)=",tempr_id,") AND ((tempr_operation.tempr_operation_id)=",tempr_oper_id,
+                                ") AND ((pressure.pressure_id)=",pressure_id,"
+                                ) AND ((material_type_separate.material_type_separete_id)=", material_type_separete_id,"));
+                                ")
+  }else{
+    # select
+    select_operations <- paste0("SELECT  list_of_operations.operation_order, list_of_operations.operation_name_4table
+                                FROM valve INNER JOIN ((valve_type INNER JOIN (valve_qa_type INNER JOIN (tempr INNER JOIN (tempr_operation INNER JOIN (pressure INNER JOIN (meterial_type_general INNER JOIN (material INNER JOIN ((material_type_separate INNER JOIN general_to_separate ON material_type_separate.material_type_separete_id = general_to_separate.material_type_separete_id) INNER JOIN (list_of_operations INNER JOIN (((detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) INNER JOIN ((detail_type INNER JOIN operations_qa_dependency ON detail_type.detail_type = operations_qa_dependency.detail_type) INNER JOIN detail_detail_type ON detail_type.detail_type = detail_detail_type.detail_type) ON detail.detail_id = detail_detail_type.detail_id) INNER JOIN valve_detail ON detail.detail_id = valve_detail.detail_id) ON list_of_operations.operation_id = operations_qa_dependency.operation_id) ON material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id) ON material.material_id = detail_material.material_id) ON (meterial_type_general.material_type_general_id = material.material_type_general_id) AND (meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id)) ON pressure.pressure_id = operations_qa_dependency.pressure_id) ON tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id) ON tempr.tempr_id = operations_qa_dependency.tempr_id) ON valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id) ON valve_type.valve_type_by_socet = detail_detail_type.valve_type_by_socet) INNER JOIN valve_id_to_socet ON valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet) ON (valve.valve_id = valve_id_to_socet.valve_id) AND (valve.valve_id = valve_detail.valve_id)
+                                WHERE (((valve_qa_type.valve_qa_type_id)=", qa_type_id,") AND ((valve.valve_id)=",valve_id,") AND ((detail.detail_id)="
+                                ,detail_id,") AND ((tempr.tempr_id)=",tempr_id,") AND ((tempr_operation.tempr_operation_id)=",tempr_oper_id,
+                                ") AND ((pressure.pressure_id)=",pressure_id,") AND ((material.material_id)=",material_id,"));
+                                ")
+  }
+  x <- dbGetQuery(con, select_operations)
+  Encoding(x$operation_name_4table) <- "UTF-8"
+  # Encoding(x$operation_name_particular) <- "UTF-8"
+  x <- x[order(x$operation_order),]
+  x$join_key <- as.integer(seq(1, length(x$operation_order), by = 1))
+  x$operation_order <- NULL 
+  return(x)
+}
+
+
+get_welding_and_overlay_detail_list <- function(con, valve_name){
+
+  select_welding_det <- paste0("SELECT
+                   detail_for_con.detail_4con_name,
+                  detail_for_con.detail_4con_id,
+                  detail_for_con.detail_name_rus
+                   FROM 
+                   public.valve, 
+                   public.detail_4con_to_valve, 
+                   public.detail_for_con
+                   WHERE 
+                   valve.valve_id = detail_4con_to_valve.valve_id AND
+                   detail_4con_to_valve.detail_4con_id = detail_for_con.detail_4con_id AND
+                   valve.valve_name = '", valve_name, "';
+                   ")
+  x <- dbGetQuery(con, select_welding_det)
+  Encoding(x$detail_4con_name) <- "UTF-8"
+  Encoding(x$detail_name_rus) <- "UTF-8"
+  return(x)
+}
+
+
+get_conncetion_type_info <- function(con, detail_4con_name, type = NaN){
+  if(type == "id"){
+    select <- paste0("SELECT 
+                              connection_type.con_type_id
+                              FROM 
+                              public.detail_for_con, 
+                              public.detail_to_con_type, 
+                              public.connection_type
+                              WHERE 
+                              detail_for_con.detail_4con_id = detail_to_con_type.detail_4con_id AND
+                              detail_to_con_type.con_type_id = connection_type.con_type_id AND
+                              detail_4con_name = '", detail_4con_name,"';
+                              ")
+    con_id_frame <- dbGetQuery(con,select)
+    con_id <- con_id_frame$con_type_id[1]
+    return(con_id)
+  # } else if(type == "input type"){
+  #   select <- paste0("
+  #                    ")
+  #   con_id_frame <- dbGetQuery(con,select)
+  #   con_id <- con_id_frame$con_type_id[1]
+  #   return(con_id)
+  }else {
+    return(NaN)
+  }
+}
+
+con <- okan_db_connect()
+
+valve_list <- get_valve_list(con)
+qa_type_list <- get_qa_type_list(con)
+tempr_list <- get_tempr_list(con)
+tempr_oper_list <- get_tempr_oper_list(con)
+pressure_list <- get_pressure_list(con)
+dn_value_list <- get_dn_list(con)
+control_type_list <- get_control_type_list(con)
+# ct_name <- control_type_list$control_type_def[1]
+# # 
+# # # con, vavle_type,qa_type, tempr, tempr_oper, pressure, detail, material
+# qa_type <- qa_type_list$valve_qa_type_name[1]
+# tempr <- tempr_list$tempr_value_more_than_100[1]
+# tempr_oper <- tempr_oper_list$tempr_oper_value_more_than_20[1]
+# pressure <- pressure_list$pressure_type[1]
+# #
+valve_name <- valve_list$valve_name[8]
+# detail_list <- get_detial_list(con, valve_name)
+# detail = detail_list$detail_name_rus[5]
+# material_list <- get_material_list(con,detail,valve_name)
+# material <- material_list$material_name[1]
+# # # get_qa_operations_for_detail(con, vavle_type,qa_type, tempr, tempr_oper, pressure, detail, material)
+# # qa_oper_list <- get_qa_operations_for_detail(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material)
+# # 
+okan_db_disconnect(con)
+
+#_________________________________________________________________________________________________________________________________________________
+### Shiny UI ####
+#_________________________________________________________________________________________________________________________________________________
+ui <- dashboardPage(
+  dashboardHeader(title = "OKANVAL web-UI demo"),
+  ## Sidebar content
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Исхожные данные", tabName = "init_data", icon = icon("home")),
+      menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list")),
+      menuItem("ТБ 1", tabName = "qa_op_table", icon = icon("table")),
+      menuItem("ТБ 2", tabName = "qa_op_table2", icon = icon("table"))
+    )
+  ),
+  ## Body content
+  dashboardBody(
+    tabItems(
+      # First tab content
+      tabItem(tabName = "init_data",
+              wellPanel(
+                fluidPage(
+                  column(8,
+                         
+                         fluidPage(
+                           selectInput("select_valve", label = h3("Тип клапана"), 
+                                       choices = valve_list$valve_name, 
+                                       selected = 1,
+                                       width = "100%"),
+                           hr()
+                         )
+                  ),
+                  column(4,
+                         
+                         textInput("rv_drawing_number", "Введите обозначение чертежа деталей ",
+                                   value = "RV-YYYYYY", width = "80%"),
+                         # verbatimTextOutput("rv_draw_numb_disp")
+                         h5("Обозначение чертежа деталей:"),
+                         verbatimTextOutput("rv_draw_numb_disp")
+                  ),
+                  column(4,
+                         selectInput("select_qa_type", label = h4("Класс безопасности"), 
+                                     choices = qa_type_list$valve_qa_type_name, 
+                                     selected = 1,
+                                     width = "30%")
+                  ),
+                  column(4,
+                         selectInput("dn_value", label = h4("Значение DN клапана"),
+                                     choices = dn_value_list$dn_value,
+                                     selected = 1,
+                                     width = "30%")
+                  ),
+                  column(4,
+                         selectInput("control_type", label = h4("Управляющий орган"),
+                                     choices = control_type_list$control_type_def,
+                                     selected = 1,
+                                     width = "60%")
+                  )
+                ),
+                fluidPage(
+                  column(4,fluidPage(
+                    selectInput("select_tempr", label = h4("Температура рабочей среды выше 100?"), 
+                                choices = tempr_list$tempr_value_more_than_100, 
+                                selected = 1,
+                                width = "40%")
+                  )
+                  ),
+                  column(4,fluidPage(
+                    selectInput("select_tempr_oper", label = h4("Внешняя температура выше 20?"), 
+                                choices = tempr_oper_list$tempr_oper_value_more_than_20, 
+                                selected = 1,
+                                width = "40%")
+                  )
+                  ),
+                  column(4,fluidPage(
+                    htmlOutput("dynamic_select_pressure")
+                    # selectInput("select_pressure", label = h4("Тип клапана в соответствии с давлением"), 
+                    #             choices = pressure_list$pressure_type, 
+                    #             selected = 1,
+                    #             width = "40%")
+                  )
+                  )
+                )
+              )
+      ),
+      # Second tab content
+      tabItem(tabName = "det_n_mat",
+              wellPanel(
+                fluidPage(
+                  h2("Список деталей клапана"),
+                  h3("Выберите материалы для каждой детали"),
+                  htmlOutput("details_and_materials")
+                )
+              ),
+              wellPanel(
+                fluidPage(
+                  h3("Выберите материал наплавки для деталей(при наличии)"),
+                  htmlOutput("details_and_overlays")
+                )
+              )
+      ),
+      # Third tab content
+      tabItem(tabName = "qa_op_table",
+              wellPanel(
+                fluidPage(
+                  
+                  h2("Таблица ТБ"),
+                  # verbatimTextOutput("info_text"),
+                  verbatimTextOutput("valve_code")
+                  ,
+                  htmlOutput("qa_table"),
+                  htmlOutput("text"),
+                  downloadButton('downloadData', 'Скачать в *.csv')
+                )
+              )
+      ),
+      # Fourth tab content
+      tabItem(tabName = "qa_op_table2",
+              wellPanel(
+                fluidPage(
+                  h2("Таблица ТБ2"),
+                  htmlOutput("qa_table2")
+                  # # verbatimTextOutput("info_text"),
+                  # verbatimTextOutput("valve_code")
+                  # ,
+                  # htmlOutput("qa_table"),
+                  # htmlOutput("text"),
+                  # downloadButton('downloadData', 'Скачать в *.csv')
+                )
+              )
+      )
+    )
+  )
+)
+
+#_________________________________________________________________________________________________________________________________________________
+### Shiny Server ####
+#_________________________________________________________________________________________________________________________________________________
+server <- function(input, output, session) {
+  con <- okan_db_connect()
+  
+  
+  reactive_get_oper_table <- reactive({
+    
+    frame_with_names_of_operations <- get_distinct_names_of_qa_operations(con)
+    dataframe_to_be_retuned <- frame_with_names_of_operations
+    qa_type <- input$select_qa_type
+    tempr <- input$select_tempr
+    tempr_oper <- input$select_tempr_oper
+    pressure <- input$select_pressure
+    valve_name <- input$select_valve
+    detail_list <- get_detial_list(con, input$select_valve)
+    # drawing_number_of_detail <- data.frame(names = 0)
+    drawing_number_of_detail <- data.frame(names=as.character(seq(length(detail_list$detail_name_rus))),
+                                           stringsAsFactors=FALSE) 
+    # drawing_number_of_detail$name <- x$valve_id
+    for(i in 1 : length(detail_list$detail_name_rus)) {
+      name <- paste0("material_", i)
+      material <- input[[name]]
+      detail = detail_list$detail_name_rus[i]
+      x<-get_detail_input_info(con, detail, type = "drawing name")
+      drawing_number_of_detail$names[i] <-
+        paste0(reactive_get_rv_drawing_number(), "-",get_detail_input_info(con, detail, type = "drawing name"))
+      x <- get_qa_operations_for_detail(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material)
+      names(x)[names(x) == 'operation_name_4table'] <- paste0(detail, "/", material)
+      dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "join_key")
+      rm(x, material, name, detail)
+      
+    }
+    
+    dataframe_to_be_retuned$join_key <- NULL
+    # transponse output data
+    dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned)
+    dataframe_to_be_retuned.t <- as.data.frame(dataframe_to_be_retuned.t )
+    colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
+    dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(1, 2), ]
+    dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Detail/Material")
+    # split detail and material to seperate columns
+    x<-strsplit(dataframe_to_be_retuned.t$`Detail/Material`,"/")
+    x<- as.data.frame(x)
+    x.t <- t(x)
+    x <- as.data.frame(x.t)
+    dataframe_to_be_retuned.t$Detail <- x$V1
+    dataframe_to_be_retuned.t$Material <- x$V2
+    dataframe_to_be_retuned.t$`Detail/Material` <- NULL
+    dataframe_to_be_retuned.t$`Обозначение чертежа детали` <- drawing_number_of_detail$names
+    # re-ordering indexes
+    dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(25,26,27,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)]
+    # return(dataframe_to_be_retuned)
+    return(dataframe_to_be_retuned.t)
+    
+  })
+  
+  
+  reactive_get_definition_of_designations <- reactive({
+    y <- reactive_get_oper_table()
+    z <- which(y$`Радиографический контроль отливок` == '100*100 %')
+    if(length(z) == 0){
+      z <- which(y$`Радиографический контроль отливок` == '100% K3')
+      if(length(z) == 0){
+        z <- which(y$`Радиографический контроль отливок` == '20% K3')
+        if(length(z) == 0){
+          select = NaN
+        }else{
+          select = '20% K3'
+        }
+      }else{
+        select = '100% K3'
+      }
+    }else{
+      select = '100*100 %'
+    }
+    
+    if(!is.nan(select)){
+      select_full <- paste0("SELECT list_of_operations.operation_name_4table_definition
+                            FROM list_of_operations
+                            WHERE list_of_operations.operation_name_4table='", select, "'")
+      get_def_of_select <- dbGetQuery(con, select_full)
+      Encoding(get_def_of_select$operation_name_4table_definition) <- "UTF-8"
+      to_return <- get_def_of_select$operation_name_4table_definition[1]
+      rreturn <- paste0(select,"  -", to_return)
+      return(rreturn)
+    }else{
+      return(' ')
+    }
+  })
+  
+  
+  reactive_get_valve_code <- reactive({
+    qa_type <- input$select_qa_type
+    dn <- input$dn_value
+    valve_type <- get_valve_input_info(con, input$select_valve, type = "type")
+    material <- input$material_1
+    material_type <- get_material_input_info(con, input$material_1, type = "body material type")
+    qa_type <- get_qa_input_info(con, input$select_qa_type, type = "qa type name")
+    control_type <- get_valve_input_info(con, input$select_valve, type = "control_type")
+    control_valve_type <- get_control_type_info(con, input$control_type, type = "4table")
+    x <- paste0("OK.", dn, ".A",  valve_type, ".", material_type, qa_type, control_type, control_valve_type)
+    return(x)
+  })
+  
+  
+  reactive_get_header_of_qa_table <- reactive({
+    code <- reactive_get_valve_code()
+    
+    x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, input$select_valve, type = "type_def")
+                , ", \nномер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
+    return(x)
+  })
+  
+  
+  reactive_get_rv_drawing_number <- reactive({
+    dynamic_part <- input$rv_drawing_number
+    x <- paste0("RV-", dynamic_part)
+    return(x)
+  })
+  
+  
+  
+  reactiive_get_welding_and_overaly_table <- reactive({
+    qa_type <- input$select_qa_type
+    tempr <- input$select_tempr
+    valve_name <- input$select_valve
+    data_frame_to_be_returned <- get_welding_and_overlay_detail_list(con, valve_name)
+    materials <- reactive_get_oper_table()
+    materials <- materials[c(1,2)]
+    materials$Detail <- as.character(materials$Detail)
+    materials$Material <- as.character(materials$Material)
+    data_frame_to_be_returned <- left_join(data_frame_to_be_returned, materials,
+                                           by = c("detail_name_rus" = "Detail"))
+    
+    overlay_detail_list <- get_overlay_detail_list(con, valve_name)
+    overlay_detail_list <- overlay_detail_list[(-c(2))]
+    overlay_detail_list$input_overlay_type <- "0"
+    for(i in 1 : length(overlay_detail_list$detail_4con_name)){
+      detail_name <- overlay_detail_list$detail_4con_name[i]
+      name <- paste0("overlay_", i)
+      input_overlay_type <- input[[name]]
+      overlay_detail_list$input_overlay_type[i] <- input_overlay_type
+    }
+    
+    data_frame_to_be_returned <- left_join(data_frame_to_be_returned, overlay_detail_list,
+                                           by = "detail_4con_name")
+    
+    for(i in 1 : length(data_frame_to_be_returned$detail_name_rus)) {
+      material_type_separate_id <- get_material_input_info(con,data_frame_to_be_returned$Material[i],
+                                    type = "material type separate")
+      connection_type_id <- get_conncetion_type_info(con, data_frame_to_be_returned$detail_4con_name[i],
+                                                     type = "id")
+      
+      }
+    return(data_frame_to_be_returned)
+  })
+  
+  
+  output$valve_code <- renderText({
+    
+    reactive_get_header_of_qa_table()
+    # str(reactive_get_header_of_qa_table())
+  },quoted = FALSE)
+  
+  output$dynamic_select_pressure <-
+    renderUI({
+      current_qa_type <- input$select_qa_type
+      if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
+        selectInput("select_pressure", label = h4("Тип клапана в соответствии с давлением"),
+                    choices = pressure_list$pressure_type[2],
+                    selected = 1,
+                    width = "40%")
+      }else {
+        selectInput("select_pressure", label = h4("Тип клапана в соответствии с давлением"),
+                    choices = pressure_list$pressure_type,
+                    selected = 1,
+                    width = "40%")
+      }
+      
+    })
+  
+  output$details_and_materials <- 
+    renderUI({
+      detail_list <- get_detial_list(con, input$select_valve)
+      lapply(1:length(detail_list$detail_name_rus), function(i) {
+        detail_current = detail_list$detail_name_rus[i]
+        Encoding(detail_current) <- "UTF-8"
+        material_4_detail <- get_material_list(con, detail_current, input$select_valve)
+        column(6,
+               selectInput(paste0("material_",i), label = paste0(detail_current," ,материал:"),
+                           # selectInput(paste0("material_",i), label = paste0("material_",i),
+                           choices = material_4_detail$material_name,
+                           selected = 1)
+        )
+      })
+    })
+  
+  output$details_and_overlays <-
+    renderUI({
+      detail_list2 <- get_overlay_detail_list(con, input$select_valve)
+      lapply(1:length(detail_list2$detail_4con_name), function(i) {
+        detail_current = detail_list2$detail_4con_name[i]
+        Encoding(detail_current) <- "UTF-8"
+        material_4_detail <- get_overlay_list(con)
+        print((paste0("overlay_",i)))
+        column(6,
+               selectInput(paste0("overlay_",i), label = paste0(detail_current," ,наплавка:"),
+                           # selectInput(paste0("material_",i), label = paste0("material_",i),
+                           choices = material_4_detail$overlay_type_name,
+                           selected = 1)
+        )
+      })
+    })
+  
+  output$rv_draw_numb_disp <-
+    renderText({paste0(input$rv_drawing_number,"-XX")})
+  
+  output$qa_table <-
+    renderGvis({
+      gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 3, page = 'enable', headerRow = 
+                                                          "tr.rotate {
+                                                        white-space: nowrap;
+                                                        -webkit-transform-origin: 65px 60px;
+                                                        -moz-transform-origin: 65px 60px;
+                                                        -o-transform-origin: 65px 60px;
+                                                        -ms-transform-origin: 65px 60px;
+                                                        transform-origin: 65px 60px;
+    }
+                                                        
+                                                        tr.rights {
+                                                        text-align: center;
+                                                        }" ))
+    })
+  
+  output$qa_table2 <-
+    renderGvis({
+      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 3, page = 'enable'))
+    })
+  
+  output$text <-
+    renderText({
+      
+      HTML(paste0(
+        "<p><b>Обозначения:</b></p>
+        <p>+   - контроль производится;</p>
+        <p>-   - контроль не производится;</p>
+        <p>+c  - результаты испытаний подтверждаются сертификатом.</p>",
+        reactive_get_definition_of_designations()),
+        "<p> </p>"
+      )
+    })
+  
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste0('QA_table_', Sys.Date(), '.csv')
+    },
+    content = function(file) {
+      data <- reactive_get_oper_table()
+      header <- paste0(reactive_get_header_of_qa_table(),"\n")
+      bottom <- paste0(
+        "Обозначения:
+        +   - контроль производится;
+        -   - контроль не производится;
+        +c  - результаты испытаний подтверждаются сертификатом.",
+        "\n",
+        reactive_get_definition_of_designations())
+      cat(header, file=file, append = TRUE, sep =";" )
+      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
+      cat(bottom, file=file, append = TRUE, sep =";" )
+    }
+  )
+}
+#_________________________________________________________________________________________________________________________________________________
+### Shiny App ####
+#_________________________________________________________________________________________________________________________________________________
+
+shinyApp(ui, server)
+
+# options(shiny.port = 7775)
+# options(shiny.host = "192.168.1.118")
+# static ip from phone
+# options(shiny.host = "192.168.1.119")
+
