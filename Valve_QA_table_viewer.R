@@ -662,13 +662,13 @@ ui <- dashboardPage(
                 fluidPage(
                   h2("Таблица ТБ2"),
                   verbatimTextOutput("valve_code_qa2"),
-                  htmlOutput("qa_table2")
+                  htmlOutput("qa_table2"),
                   # # verbatimTextOutput("info_text"),
                   # verbatimTextOutput("valve_code")
                   # ,
                   # htmlOutput("qa_table"),
                   # htmlOutput("text"),
-                  # downloadButton('downloadData', 'Скачать в *.csv')
+                  downloadButton('download_qa2', 'Скачать в *.csv')
                 )
               )
       )
@@ -740,6 +740,40 @@ server <- function(input, output, session) {
     z <- which(y$`Радиографический контроль отливок` == '100*100 %')
     if(length(z) == 0){
       z <- which(y$`Радиографический контроль отливок` == '100% K3')
+      if(length(z) == 0){
+        z <- which(y$`Радиографический контроль отливок` == '20% K3')
+        if(length(z) == 0){
+          select = NaN
+        }else{
+          select = '20% K3'
+        }
+      }else{
+        select = '100% K3'
+      }
+    }else{
+      select = '100*100 %'
+    }
+    
+    if(!is.nan(select)){
+      select_full <- paste0("SELECT list_of_operations.operation_name_4table_definition
+                            FROM list_of_operations
+                            WHERE list_of_operations.operation_name_4table='", select, "'")
+      get_def_of_select <- dbGetQuery(con, select_full)
+      Encoding(get_def_of_select$operation_name_4table_definition) <- "UTF-8"
+      to_return <- get_def_of_select$operation_name_4table_definition[1]
+      rreturn <- paste0(select,"  -", to_return)
+      return(rreturn)
+    }else{
+      return(' ')
+    }
+  })
+  
+  
+  reactive_get_definition_of_designations_for_qa2 <- reactive({
+    y <- reactive_get_oper_table()
+    z <- which(y$`Визуальный контроль сварных соединений` == '+100*%')
+    if(length(z) == 0){
+      z <- which(y$`Визуальный контроль сварных соединений` == '+100%')
       if(length(z) == 0){
         z <- which(y$`Радиографический контроль отливок` == '20% K3')
         if(length(z) == 0){
@@ -867,7 +901,7 @@ server <- function(input, output, session) {
       # re-ordering indexes
       # dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(25,26,27,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)]
       # return(dataframe_to_be_retuned)
-      return(dataframe_to_be_retuned)
+      return(dataframe_to_be_retuned.t)
       
     }
   })
@@ -879,7 +913,7 @@ server <- function(input, output, session) {
     # str(reactive_get_header_of_qa_table())
   },quoted = FALSE)
  
-   output$valve_code_qa2<- renderText({
+  output$valve_code_qa2<- renderText({
       reactive_get_header_of_qa2_table()
     },quoted = FALSE)
   
@@ -957,7 +991,7 @@ server <- function(input, output, session) {
   
   output$qa_table2 <-
     renderGvis({
-      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 3))
+      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 1))
     })
   
   output$text <-
@@ -974,6 +1008,25 @@ server <- function(input, output, session) {
     })
   
 
+  output$download_qa2 <- downloadHandler(
+    filename = function() {
+      paste0('QA2_table_', Sys.Date(), '.csv')
+    },
+    content = function(file) {
+      data <- reactiive_get_welding_and_overaly_table()
+      header <- paste0(reactive_get_header_of_qa2_table(),"\n")
+      # bottom <- paste0(
+      #   "Обозначения:
+      #   +   - контроль производится;
+      #   -   - контроль не производится;
+      #   +c  - результаты испытаний подтверждаются сертификатом.",
+      #   "\n",
+      #   reactive_get_definition_of_designations())
+      cat(header, file=file, append = TRUE, sep =";" )
+      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
+      # cat(bottom, file=file, append = TRUE, sep =";" )
+    }
+  )
   
   output$downloadData <- downloadHandler(
     filename = function() {
