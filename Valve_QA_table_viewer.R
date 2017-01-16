@@ -251,9 +251,14 @@ get_overlay_detail_list <- function (con, valve_name){
                            valve.valve_name = '", valve_name, "';"
   )
   x <- dbGetQuery(con, select_details)
-  Encoding(x$detail_4con_name) <- "UTF-8"
-  Encoding(x$detail_name_rus) <- "UTF-8"
-  return(x)
+  if(nrow(x) !=0)
+    {
+    Encoding(x$detail_4con_name) <- "UTF-8"
+    Encoding(x$detail_name_rus) <- "UTF-8"
+    return(x)
+  }else{
+    return(NaN)
+  }
 }
 
 
@@ -330,12 +335,26 @@ get_overlay_list <- function(con) {
 }
 
 
-get_distinct_names_of_qa_operations <- function(con){
-  x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular FROM list_of_operations")
-  Encoding(x$operation_name_particular) <- "UTF-8"
-  x <- x[order(x$operation_order),]
-  x$join_key <- as.integer(seq(1, length(x$operation_name_particular), by = 1))
-  return(x)
+get_distinct_names_of_qa_operations <- function(con, type = NaN){
+  if(type == "QA 1"){
+    x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
+                        FROM list_of_operations
+                        WHERE list_of_operations.operation_id < 50")
+    Encoding(x$operation_name_particular) <- "UTF-8"
+    x <- x[order(x$operation_order),]
+    x$join_key <- as.integer(seq(1, length(x$operation_name_particular), by = 1))
+    return(x)
+  } else if(type == "QA 2"){
+    x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
+                        FROM list_of_operations
+                   WHERE list_of_operations.operation_id > 50")
+    Encoding(x$operation_name_particular) <- "UTF-8"
+    x <- x[order(x$operation_order),]
+    as.integer(x$operation_order)
+    return(x)
+  }else{
+    return(NaN)
+  }
 }
 
 
@@ -411,9 +430,14 @@ get_welding_and_overlay_detail_list <- function(con, valve_name){
                    valve.valve_name = '", valve_name, "';
                    ")
   x <- dbGetQuery(con, select_welding_det)
-  Encoding(x$detail_4con_name) <- "UTF-8"
-  Encoding(x$detail_name_rus) <- "UTF-8"
-  return(x)
+  if(nrow(x) !=0)
+  {
+    Encoding(x$detail_4con_name) <- "UTF-8"
+    Encoding(x$detail_name_rus) <- "UTF-8"
+    return(x)
+  }else{
+    return(NaN)
+  }
 }
 
 
@@ -444,6 +468,51 @@ get_conncetion_type_info <- function(con, detail_4con_name, type = NaN){
   }
 }
 
+
+get_qa2_operations_for_detail <- function(con, qa_type_name, tempr_name, connection_type_id, material_type_separate_id, detail_4con_name_current) {
+  select <- paste0("SELECT 
+                   list_of_operations.operation_name_4table, 
+                   list_of_operations.operation_order
+                   FROM 
+                   public.operations_secondqa_dependency, 
+                   public.valve_qa_type, 
+                   public.tempr, 
+                   public.connection_type, 
+                   public.list_of_operations, 
+                   public.material_type_separate, 
+                   public.radiographic_for_welding, 
+                   public.control_with_helium, 
+                   public.detail_for_con, 
+                   public.detail_4con_to_helium_control, 
+                   public.detail_4con_to_radiography
+                   WHERE 
+                   operations_secondqa_dependency.operation_id = list_of_operations.operation_id AND
+                   valve_qa_type.valve_qa_type_id = operations_secondqa_dependency.valve_qa_type_id AND
+                   tempr.tempr_id = operations_secondqa_dependency.tempr_id AND
+                   connection_type.con_type_id = operations_secondqa_dependency.con_type_id AND
+                   material_type_separate.material_type_separete_id = operations_secondqa_dependency.material_type_separete_id AND
+                   radiographic_for_welding.r4w_id = operations_secondqa_dependency.r4w_id AND
+                   control_with_helium.control_helium_id = operations_secondqa_dependency.control_helium_id AND
+                   detail_for_con.detail_4con_id = detail_4con_to_radiography.detail_4con_id AND
+                   detail_for_con.detail_4con_id = detail_4con_to_helium_control.detail_4con_id AND
+                   detail_4con_to_helium_control.control_helium_id = control_with_helium.control_helium_id AND
+                   detail_4con_to_radiography.r4w_id = radiographic_for_welding.r4w_id AND
+                   valve_qa_type.valve_qa_type_name ='",qa_type_name ,"'AND 
+                   tempr.tempr_value_more_than_100 ='", tempr_name,"'AND 
+                   connection_type.con_type_id =",connection_type_id," AND 
+                   material_type_separate.material_type_separete_id =", material_type_separate_id," AND 
+                   detail_for_con.detail_4con_name ='",detail_4con_name_current,"';
+                   ")
+ 
+  x <- dbGetQuery(con, select)
+  # Encoding(x$operation_name_general) <- "UTF-8"
+  # Encoding(x$operation_name_particular) <- "UTF-8"
+  Encoding(x$operation_name_4table) <- "UTF-8"
+  # Encoding(x$operation_name_4table_definition) <- "UTF-8"
+  return(x)
+  }
+
+
 con <- okan_db_connect()
 
 valve_list <- get_valve_list(con)
@@ -461,7 +530,8 @@ control_type_list <- get_control_type_list(con)
 # tempr_oper <- tempr_oper_list$tempr_oper_value_more_than_20[1]
 # pressure <- pressure_list$pressure_type[1]
 # #
-valve_name <- valve_list$valve_name[8]
+valve_name <- valve_list$valve_name[14]
+det2_list <- get_welding_and_overlay_detail_list(con, valve_name)
 # detail_list <- get_detial_list(con, valve_name)
 # detail = detail_list$detail_name_rus[5]
 # material_list <- get_material_list(con,detail,valve_name)
@@ -591,6 +661,7 @@ ui <- dashboardPage(
               wellPanel(
                 fluidPage(
                   h2("Таблица ТБ2"),
+                  verbatimTextOutput("valve_code_qa2"),
                   htmlOutput("qa_table2")
                   # # verbatimTextOutput("info_text"),
                   # verbatimTextOutput("valve_code")
@@ -614,7 +685,7 @@ server <- function(input, output, session) {
   
   reactive_get_oper_table <- reactive({
     
-    frame_with_names_of_operations <- get_distinct_names_of_qa_operations(con)
+    frame_with_names_of_operations <- get_distinct_names_of_qa_operations(con,type = "QA 1")
     dataframe_to_be_retuned <- frame_with_names_of_operations
     qa_type <- input$select_qa_type
     tempr <- input$select_tempr
@@ -721,6 +792,15 @@ server <- function(input, output, session) {
   })
   
   
+  reactive_get_header_of_qa2_table <- reactive({
+    code <- reactive_get_valve_code()
+    
+    x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, input$select_valve, type = "type_def")
+                , ", \nномер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
+    return(x)
+  })
+  
+  
   reactive_get_rv_drawing_number <- reactive({
     dynamic_part <- input$rv_drawing_number
     x <- paste0("RV-", dynamic_part)
@@ -728,40 +808,68 @@ server <- function(input, output, session) {
   })
   
   
-  
   reactiive_get_welding_and_overaly_table <- reactive({
-    qa_type <- input$select_qa_type
-    tempr <- input$select_tempr
+    qa_type_name <- input$select_qa_type
+    tempr_name <- input$select_tempr
     valve_name <- input$select_valve
-    data_frame_to_be_returned <- get_welding_and_overlay_detail_list(con, valve_name)
+    frame_with_names_of_operations <- get_distinct_names_of_qa_operations(con,type = "QA 2")
+    dataframe_to_be_retuned <- frame_with_names_of_operations
+    
     materials <- reactive_get_oper_table()
     materials <- materials[c(1,2)]
     materials$Detail <- as.character(materials$Detail)
     materials$Material <- as.character(materials$Material)
-    data_frame_to_be_returned <- left_join(data_frame_to_be_returned, materials,
-                                           by = c("detail_name_rus" = "Detail"))
     
-    overlay_detail_list <- get_overlay_detail_list(con, valve_name)
-    overlay_detail_list <- overlay_detail_list[(-c(2))]
-    overlay_detail_list$input_overlay_type <- "0"
-    for(i in 1 : length(overlay_detail_list$detail_4con_name)){
-      detail_name <- overlay_detail_list$detail_4con_name[i]
-      name <- paste0("overlay_", i)
-      input_overlay_type <- input[[name]]
-      overlay_detail_list$input_overlay_type[i] <- input_overlay_type
-    }
-    
-    data_frame_to_be_returned <- left_join(data_frame_to_be_returned, overlay_detail_list,
-                                           by = "detail_4con_name")
-    
-    for(i in 1 : length(data_frame_to_be_returned$detail_name_rus)) {
-      material_type_separate_id <- get_material_input_info(con,data_frame_to_be_returned$Material[i],
-                                    type = "material type separate")
-      connection_type_id <- get_conncetion_type_info(con, data_frame_to_be_returned$detail_4con_name[i],
-                                                     type = "id")
+    details_for_welding_list <- get_welding_and_overlay_detail_list(con, valve_name)
+    if(is.data.frame(details_for_welding_list)){
+      details_for_welding_list <- left_join(details_for_welding_list, materials,
+                                             by = c("detail_name_rus" = "Detail"))
       
+      detail_list2 <- get_overlay_detail_list(con, input$select_valve)
+      if(is.data.frame(detail_list2)){
+        overlay_detail_list <- get_overlay_detail_list(con, valve_name)
+        overlay_detail_list <- overlay_detail_list[(-c(2))]
+        overlay_detail_list$input_overlay_type <- "0"
+        for(i in 1 : length(overlay_detail_list$detail_4con_name)){
+          detail_name <- overlay_detail_list$detail_4con_name[i]
+          name <- paste0("overlay_", i)
+          input_overlay_type <- input[[name]]
+          overlay_detail_list$input_overlay_type[i] <- input_overlay_type
+        }
+        details_for_welding_list <- left_join(details_for_welding_list, overlay_detail_list,
+                                               by = "detail_4con_name")
       }
-    return(data_frame_to_be_returned)
+        
+      for(i in 1 : length(details_for_welding_list$detail_name_rus)) {
+        material_type_separate_id <- get_material_input_info(con,details_for_welding_list$Material[i],
+                                      type = "material type separate")
+        connection_type_id <- get_conncetion_type_info(con, details_for_welding_list$detail_4con_name[i],
+                                                       type = "id")
+        detail_4con_name_current <- details_for_welding_list$detail_4con_name[i]
+        x <- get_qa2_operations_for_detail(con, qa_type_name, tempr_name, connection_type_id, material_type_separate_id, detail_4con_name_current)
+        colnames(x)[colnames(x) == "operation_name_4table"] <- detail_4con_name_current
+        dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "operation_order")
+      }
+      dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned)
+      dataframe_to_be_retuned.t <- as.data.frame(dataframe_to_be_retuned.t )
+      colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
+      dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(1, 2), ]
+      dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Деталь")
+      # split detail and material to seperate columns
+      # x<-strsplit(dataframe_to_be_retuned.t$`Деталь`,"/")
+      # x<- as.data.frame(x)
+      # x.t <- t(x)
+      # x <- as.data.frame(x.t)
+      # dataframe_to_be_retuned.t$Detail <- x$V1
+      # dataframe_to_be_retuned.t$Material <- x$V2
+      # dataframe_to_be_retuned.t$`Деталь` <- NULL
+      # dataframe_to_be_retuned.t$`Обозначение чертежа детали` <- drawing_number_of_detail$names
+      # re-ordering indexes
+      # dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(25,26,27,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)]
+      # return(dataframe_to_be_retuned)
+      return(dataframe_to_be_retuned)
+      
+    }
   })
   
   
@@ -770,6 +878,10 @@ server <- function(input, output, session) {
     reactive_get_header_of_qa_table()
     # str(reactive_get_header_of_qa_table())
   },quoted = FALSE)
+ 
+   output$valve_code_qa2<- renderText({
+      reactive_get_header_of_qa2_table()
+    },quoted = FALSE)
   
   output$dynamic_select_pressure <-
     renderUI({
@@ -807,18 +919,20 @@ server <- function(input, output, session) {
   output$details_and_overlays <-
     renderUI({
       detail_list2 <- get_overlay_detail_list(con, input$select_valve)
-      lapply(1:length(detail_list2$detail_4con_name), function(i) {
-        detail_current = detail_list2$detail_4con_name[i]
-        Encoding(detail_current) <- "UTF-8"
-        material_4_detail <- get_overlay_list(con)
-        print((paste0("overlay_",i)))
-        column(6,
-               selectInput(paste0("overlay_",i), label = paste0(detail_current," ,наплавка:"),
-                           # selectInput(paste0("material_",i), label = paste0("material_",i),
-                           choices = material_4_detail$overlay_type_name,
-                           selected = 1)
-        )
-      })
+      if(is.data.frame(detail_list2)){
+        lapply(1:length(detail_list2$detail_4con_name), function(i) {
+          detail_current = detail_list2$detail_4con_name[i]
+          Encoding(detail_current) <- "UTF-8"
+          material_4_detail <- get_overlay_list(con)
+          print((paste0("overlay_",i)))
+          column(6,
+                 selectInput(paste0("overlay_",i), label = paste0(detail_current," ,наплавка:"),
+                             # selectInput(paste0("material_",i), label = paste0("material_",i),
+                             choices = material_4_detail$overlay_type_name,
+                             selected = 1)
+          )
+        })
+      }
     })
   
   output$rv_draw_numb_disp <-
@@ -843,7 +957,7 @@ server <- function(input, output, session) {
   
   output$qa_table2 <-
     renderGvis({
-      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 3, page = 'enable'))
+      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 3))
     })
   
   output$text <-
@@ -858,6 +972,8 @@ server <- function(input, output, session) {
         "<p> </p>"
       )
     })
+  
+
   
   output$downloadData <- downloadHandler(
     filename = function() {
