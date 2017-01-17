@@ -8,6 +8,7 @@ library(googleVis)
 library(Gmisc)
 library(reshape)
 library(tidyr)
+library(shinythemes)
 
 
 rm(list = ls())
@@ -24,7 +25,8 @@ okan_db_connect <- function() {
   # creates a connection to the postgres database
   # note that "con" will be used later in each connection to the database
   con <- dbConnect(drv, dbname = "qa_db",
-)
+                   host = "okanval.okan.su", port = 6543,
+                   user = "postgres", password = pw)
   return(con)
 }
 
@@ -543,11 +545,24 @@ okan_db_disconnect(con)
 ### Shiny UI ####
 #_________________________________________________________________________________________________________________________________________________
 ui <- dashboardPage(
-  dashboardHeader(title = "OKANVAL web-UI demo"),
+  
+  dashboardHeader(title = "OKANVAL web-UI demo",
+  # Notification menu
+  dropdownMenu(type = "messages",
+               notificationItem(
+                 text = "IN DEVELOPMENT",
+                 #    ИНФОРМАЦИЯ ПО ИСПОЛЬЗОВАНИЮ OKANVAL /n
+                 #      * 1 вкладка - выбор клапана и исходных данных
+                 #      * 2 вкладка - выбор материалов деталей клапана и наплавки
+                 # ОБРАТИТЕ ВНИМАНиЕ, ЧТО ПОСЛЕ ВЫБОРА КЛАПАНА ОБЯЗАТЕЛЬНО НУЖНО ЗАЙТИ ВО ВТОРУЮ ВКЛАДКУ
+                 #      * 3 вкладка - ТБ 1
+                 #      * 4 вкладка - ТЮ 2",
+                 icon("info-circle")
+               ))),
   ## Sidebar content
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Исхожные данные", tabName = "init_data", icon = icon("home")),
+      menuItem("Исходные данные", tabName = "init_data", icon = icon("home")),
       menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list")),
       menuItem("ТБ 1", tabName = "qa_op_table", icon = icon("table")),
       menuItem("ТБ 2", tabName = "qa_op_table2", icon = icon("table"))
@@ -560,6 +575,7 @@ ui <- dashboardPage(
       tabItem(tabName = "init_data",
               wellPanel(
                 fluidPage(
+                  theme = shinytheme("yeti"),
                   column(8,
                          
                          fluidPage(
@@ -1032,7 +1048,7 @@ server <- function(input, output, session) {
         "<p><b>Обозначения:</b></p>
         <p>+   - контроль производится;</p>
         <p>-   - контроль не производится;</p>
-        <p>+c  - результаты испытаний подтверждаются сертификатом.</p>",
+        <p>+c  - результаты испытаний подтверждаются сертификатом;</p>",
         reactive_get_definition_of_designations_for_qa2()),
         "<p> </p>"
       )
