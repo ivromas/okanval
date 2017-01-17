@@ -24,8 +24,7 @@ okan_db_connect <- function() {
   # creates a connection to the postgres database
   # note that "con" will be used later in each connection to the database
   con <- dbConnect(drv, dbname = "qa_db",
-                   host = "localhost", port = 5432,
-                   user = "postgres", password = pw)
+)
   return(con)
 }
 
@@ -523,7 +522,6 @@ pressure_list <- get_pressure_list(con)
 dn_value_list <- get_dn_list(con)
 control_type_list <- get_control_type_list(con)
 # ct_name <- control_type_list$control_type_def[1]
-# # 
 # # # con, vavle_type,qa_type, tempr, tempr_oper, pressure, detail, material
 # qa_type <- qa_type_list$valve_qa_type_name[1]
 # tempr <- tempr_list$tempr_value_more_than_100[1]
@@ -667,7 +665,7 @@ ui <- dashboardPage(
                   # verbatimTextOutput("valve_code")
                   # ,
                   # htmlOutput("qa_table"),
-                  # htmlOutput("text"),
+                  htmlOutput("text_qa2"),
                   downloadButton('download_qa2', 'Скачать в *.csv')
                 )
               )
@@ -770,36 +768,58 @@ server <- function(input, output, session) {
   
   
   reactive_get_definition_of_designations_for_qa2 <- reactive({
-    y <- reactive_get_oper_table()
-    z <- which(y$`Визуальный контроль сварных соединений` == '+100*%')
-    if(length(z) == 0){
-      z <- which(y$`Визуальный контроль сварных соединений` == '+100%')
-      if(length(z) == 0){
-        z <- which(y$`Радиографический контроль отливок` == '20% K3')
-        if(length(z) == 0){
-          select = NaN
-        }else{
-          select = '20% K3'
-        }
-      }else{
-        select = '100% K3'
-      }
-    }else{
-      select = '100*100 %'
+    qa2_frame <- reactiive_get_welding_and_overaly_table()
+    qa2_frame <- qa2_frame[-c(1,2,3)]
+    operation_name_4table <- unlist(qa2_frame)
+    qa2_frame <- as.data.frame(operation_name_4table)
+    qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
+    operation_name_4table <- unique(qa2_frame$operation_name_4table)
+    qa2_frame <- as.data.frame(operation_name_4table)
+    qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
+    op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
+		                       list_of_operations.operation_name_4table
+                           FROM	list_of_operations
+                           WHERE 	list_of_operations.operation_id > 50 AND
+                           list_of_operations.operation_name_4table != '+' AND
+                           list_of_operations.operation_name_4table != '-' AND
+                           list_of_operations.operation_name_4table != '+c' AND
+                           list_of_operations.operation_name_4table !=  'NULL';")
+    Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
+    print_string <- ""
+    # lapply(1:length(defenition_df$operation_name_4table), function(i) {
+    for( i in 1:length(defenition_df$operation_name_4table)) {
+      print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4table[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
     }
-    
-    if(!is.nan(select)){
-      select_full <- paste0("SELECT list_of_operations.operation_name_4table_definition
-                            FROM list_of_operations
-                            WHERE list_of_operations.operation_name_4table='", select, "'")
-      get_def_of_select <- dbGetQuery(con, select_full)
-      Encoding(get_def_of_select$operation_name_4table_definition) <- "UTF-8"
-      to_return <- get_def_of_select$operation_name_4table_definition[1]
-      rreturn <- paste0(select,"  -", to_return)
-      return(rreturn)
-    }else{
-      return(' ')
+    return(print_string)
+  })
+  
+  
+  reactive_get_definition_of_designations_for_qa2_file <- reactive({
+    qa2_frame <- reactiive_get_welding_and_overaly_table()
+    qa2_frame <- qa2_frame[-c(1,2,3)]
+    operation_name_4table <- unlist(qa2_frame)
+    qa2_frame <- as.data.frame(operation_name_4table)
+    qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
+    operation_name_4table <- unique(qa2_frame$operation_name_4table)
+    qa2_frame <- as.data.frame(operation_name_4table)
+    qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
+    op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
+                           list_of_operations.operation_name_4table
+                           FROM	list_of_operations
+                           WHERE 	list_of_operations.operation_id > 50 AND
+                           list_of_operations.operation_name_4table != '+' AND
+                           list_of_operations.operation_name_4table != '-' AND
+                           list_of_operations.operation_name_4table != '+c' AND
+                           list_of_operations.operation_name_4table !=  'NULL';")
+    Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
+    print_string <- ""
+    # lapply(1:length(defenition_df$operation_name_4table), function(i) {
+    for( i in 1:length(defenition_df$operation_name_4table)) {
+      print_string <- paste0(print_string, defenition_df$operation_name_4table[i], " - ", defenition_df$operation_name_4table_definition[i], "; /n")
     }
+    return(print_string)
   })
   
   
@@ -996,7 +1016,6 @@ server <- function(input, output, session) {
   
   output$text <-
     renderText({
-      
       HTML(paste0(
         "<p><b>Обозначения:</b></p>
         <p>+   - контроль производится;</p>
@@ -1007,6 +1026,18 @@ server <- function(input, output, session) {
       )
     })
   
+  output$text_qa2 <-
+    renderText({
+      HTML(paste0(
+        "<p><b>Обозначения:</b></p>
+        <p>+   - контроль производится;</p>
+        <p>-   - контроль не производится;</p>
+        <p>+c  - результаты испытаний подтверждаются сертификатом.</p>",
+        reactive_get_definition_of_designations_for_qa2()),
+        "<p> </p>"
+      )
+      
+    })
 
   output$download_qa2 <- downloadHandler(
     filename = function() {
@@ -1015,16 +1046,18 @@ server <- function(input, output, session) {
     content = function(file) {
       data <- reactiive_get_welding_and_overaly_table()
       header <- paste0(reactive_get_header_of_qa2_table(),"\n")
-      # bottom <- paste0(
-      #   "Обозначения:
-      #   +   - контроль производится;
-      #   -   - контроль не производится;
-      #   +c  - результаты испытаний подтверждаются сертификатом.",
-      #   "\n",
-      #   reactive_get_definition_of_designations())
+      printstring <- reactive_get_definition_of_designations_for_qa2_file()
+      bottom <- paste0(
+        "Обозначения:
+        +   - контроль производится;
+        -   - контроль не производится;
+        +c  - результаты испытаний подтверждаются сертификатом.",
+        printstring,
+        "\n",
+        reactive_get_definition_of_designations())
       cat(header, file=file, append = TRUE, sep =";" )
       write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
-      # cat(bottom, file=file, append = TRUE, sep =";" )
+      cat(bottom, file=file, append = TRUE, sep =";" )
     }
   )
   
