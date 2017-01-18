@@ -9,6 +9,7 @@ library(Gmisc)
 library(reshape)
 library(tidyr)
 library(shinythemes)
+library(shinyjs)
 
 
 rm(list = ls())
@@ -22,11 +23,7 @@ okan_db_connect <- function() {
   }
   # loads the PostgreSQL driver
   drv <- dbDriver("PostgreSQL")
-  # creates a connection to the postgres database
-  # note that "con" will be used later in each connection to the database
-  con <- dbConnect(drv, dbname = "qa_db",
-                   host = "okanval.okan.su", port = 6543,
-                   user = "postgres", password = pw)
+
   return(con)
 }
 
@@ -373,38 +370,65 @@ get_qa_operations_for_detail <-function(con, valve_name, qa_type, tempr, tempr_o
   # get detail id
   detail_id <- get_detail_input_info(con, detail, type = "id")
   # get material_id
-  material_id <- get_material_input_info(con, material, type = "id")
+  material_sep_id <- get_material_input_info(con, material, type = "material type separate")
   
   # шпильки
   if(detail_id == 5 || detail_id == 31){
-    material_type_separete_id <- 6
-    select_operations <- paste0("SELECT  list_of_operations.operation_order, list_of_operations.operation_name_4table
-                                FROM valve INNER JOIN ((valve_type INNER JOIN (valve_qa_type INNER JOIN (tempr INNER JOIN (tempr_operation INNER JOIN (pressure INNER JOIN (meterial_type_general INNER JOIN (material INNER JOIN ((material_type_separate INNER JOIN general_to_separate ON material_type_separate.material_type_separete_id = general_to_separate.material_type_separete_id) INNER JOIN (list_of_operations INNER JOIN (((detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) INNER JOIN ((detail_type INNER JOIN operations_qa_dependency ON detail_type.detail_type = operations_qa_dependency.detail_type) INNER JOIN detail_detail_type ON detail_type.detail_type = detail_detail_type.detail_type) ON detail.detail_id = detail_detail_type.detail_id) INNER JOIN valve_detail ON detail.detail_id = valve_detail.detail_id) ON list_of_operations.operation_id = operations_qa_dependency.operation_id) ON material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id) ON material.material_id = detail_material.material_id) ON (meterial_type_general.material_type_general_id = material.material_type_general_id) AND (meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id)) ON pressure.pressure_id = operations_qa_dependency.pressure_id) ON tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id) ON tempr.tempr_id = operations_qa_dependency.tempr_id) ON valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id) ON valve_type.valve_type_by_socet = detail_detail_type.valve_type_by_socet) INNER JOIN valve_id_to_socet ON valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet) ON (valve.valve_id = valve_id_to_socet.valve_id) AND (valve.valve_id = valve_detail.valve_id)
-                                WHERE (((material.material_id)=",material_id,") AND ((valve_qa_type.valve_qa_type_id)=
-                                ", qa_type_id,") AND ((valve.valve_id)=",valve_id,") AND ((detail.detail_id)=",detail_id,
-                                ") AND ((tempr.tempr_id)=",tempr_id,") AND ((tempr_operation.tempr_operation_id)=",tempr_oper_id,
-                                ") AND ((pressure.pressure_id)=",pressure_id,"
-                                ) AND ((material_type_separate.material_type_separete_id)=", material_type_separete_id,"));
-                                ")
+    material_sep_id <- 6
   }else if(detail_id == 6 || detail_id == 32){
-    material_type_separete_id <- 7
-    select_operations <- paste0("SELECT  list_of_operations.operation_order, list_of_operations.operation_name_4table
-                                FROM valve INNER JOIN ((valve_type INNER JOIN (valve_qa_type INNER JOIN (tempr INNER JOIN (tempr_operation INNER JOIN (pressure INNER JOIN (meterial_type_general INNER JOIN (material INNER JOIN ((material_type_separate INNER JOIN general_to_separate ON material_type_separate.material_type_separete_id = general_to_separate.material_type_separete_id) INNER JOIN (list_of_operations INNER JOIN (((detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) INNER JOIN ((detail_type INNER JOIN operations_qa_dependency ON detail_type.detail_type = operations_qa_dependency.detail_type) INNER JOIN detail_detail_type ON detail_type.detail_type = detail_detail_type.detail_type) ON detail.detail_id = detail_detail_type.detail_id) INNER JOIN valve_detail ON detail.detail_id = valve_detail.detail_id) ON list_of_operations.operation_id = operations_qa_dependency.operation_id) ON material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id) ON material.material_id = detail_material.material_id) ON (meterial_type_general.material_type_general_id = material.material_type_general_id) AND (meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id)) ON pressure.pressure_id = operations_qa_dependency.pressure_id) ON tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id) ON tempr.tempr_id = operations_qa_dependency.tempr_id) ON valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id) ON valve_type.valve_type_by_socet = detail_detail_type.valve_type_by_socet) INNER JOIN valve_id_to_socet ON valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet) ON (valve.valve_id = valve_id_to_socet.valve_id) AND (valve.valve_id = valve_detail.valve_id)
-                                WHERE (((material.material_id)=",material_id,") AND ((valve_qa_type.valve_qa_type_id)=
-                                ", qa_type_id,") AND ((valve.valve_id)=",valve_id,") AND ((detail.detail_id)=",detail_id,
-                                ") AND ((tempr.tempr_id)=",tempr_id,") AND ((tempr_operation.tempr_operation_id)=",tempr_oper_id,
-                                ") AND ((pressure.pressure_id)=",pressure_id,"
-                                ) AND ((material_type_separate.material_type_separete_id)=", material_type_separete_id,"));
-                                ")
+    material_sep_id <- 7
   }else{
-    # select
-    select_operations <- paste0("SELECT  list_of_operations.operation_order, list_of_operations.operation_name_4table
-                                FROM valve INNER JOIN ((valve_type INNER JOIN (valve_qa_type INNER JOIN (tempr INNER JOIN (tempr_operation INNER JOIN (pressure INNER JOIN (meterial_type_general INNER JOIN (material INNER JOIN ((material_type_separate INNER JOIN general_to_separate ON material_type_separate.material_type_separete_id = general_to_separate.material_type_separete_id) INNER JOIN (list_of_operations INNER JOIN (((detail INNER JOIN detail_material ON detail.detail_id = detail_material.detail_id) INNER JOIN ((detail_type INNER JOIN operations_qa_dependency ON detail_type.detail_type = operations_qa_dependency.detail_type) INNER JOIN detail_detail_type ON detail_type.detail_type = detail_detail_type.detail_type) ON detail.detail_id = detail_detail_type.detail_id) INNER JOIN valve_detail ON detail.detail_id = valve_detail.detail_id) ON list_of_operations.operation_id = operations_qa_dependency.operation_id) ON material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id) ON material.material_id = detail_material.material_id) ON (meterial_type_general.material_type_general_id = material.material_type_general_id) AND (meterial_type_general.material_type_general_id = general_to_separate.material_type_general_id)) ON pressure.pressure_id = operations_qa_dependency.pressure_id) ON tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id) ON tempr.tempr_id = operations_qa_dependency.tempr_id) ON valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id) ON valve_type.valve_type_by_socet = detail_detail_type.valve_type_by_socet) INNER JOIN valve_id_to_socet ON valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet) ON (valve.valve_id = valve_id_to_socet.valve_id) AND (valve.valve_id = valve_detail.valve_id)
-                                WHERE (((valve_qa_type.valve_qa_type_id)=", qa_type_id,") AND ((valve.valve_id)=",valve_id,") AND ((detail.detail_id)="
-                                ,detail_id,") AND ((tempr.tempr_id)=",tempr_id,") AND ((tempr_operation.tempr_operation_id)=",tempr_oper_id,
-                                ") AND ((pressure.pressure_id)=",pressure_id,") AND ((material.material_id)=",material_id,"));
-                                ")
+    material_sep_id <- material_sep_id
   }
+    select_operations <- paste0("SELECT
+                                list_of_operations.operation_order, 
+                                list_of_operations.operation_name_4table
+                                FROM 
+                                public.list_of_operations, 
+                                public.operations_qa_dependency, 
+                                public.tempr, 
+                                public.tempr_operation, 
+                                public.pressure, 
+                                public.material_type_separate, 
+                                public.valve_qa_type, 
+                                public.valve, 
+                                public.valve_id_to_socet, 
+                                public.valve_type, 
+                                public.detail, 
+                                public.hydro, 
+                                public.ferrite_phase, 
+                                public.radiography, 
+                                public.detail_to_hydro, 
+                                public.detail_to_radiography, 
+                                public.ferrite_phase_to_detail
+                                WHERE 
+                                operations_qa_dependency.operation_id = list_of_operations.operation_id AND
+                                tempr.tempr_id = operations_qa_dependency.tempr_id AND
+                                tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id AND
+                                pressure.pressure_id = operations_qa_dependency.pressure_id AND
+                                material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id AND
+                                valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id AND
+                                valve.valve_id = valve_id_to_socet.valve_id AND
+                                valve_id_to_socet.valve_type_by_socet = valve_type.valve_type_by_socet AND
+                                valve_type.valve_type_by_socet = operations_qa_dependency.valve_type_by_socet AND
+                                hydro.hydro_id = operations_qa_dependency.hydro_id AND
+                                ferrite_phase.fp_id = operations_qa_dependency.fp_id AND
+                                ferrite_phase.fp_id = ferrite_phase_to_detail.fp_id AND
+                                radiography.rad_id = operations_qa_dependency.rad_id AND
+                                radiography.rad_id = detail_to_radiography.rad_id AND
+                                detail_to_hydro.hydro_id = hydro.hydro_id AND
+                                detail_to_hydro.detail_id = detail.detail_id AND
+                                detail_to_radiography.detail_id = detail.detail_id AND
+                                ferrite_phase_to_detail.detail_id = detail.detail_id AND
+                                valve.valve_id = ",valve_id," AND 
+                                valve_qa_type.valve_qa_type_id = ",qa_type_id ,"AND 
+                                detail.detail_id = ",detail_id ,"AND 
+                                material_type_separate.material_type_separete_id =  ",material_sep_id ,"AND 
+                                tempr.tempr_id = ",tempr_id ,"AND 
+                                tempr_operation.tempr_operation_id = ",tempr_oper_id," AND 
+                                list_of_operations.operation_id < 50 AND 
+                                pressure.pressure_id =", pressure_id,";")
+  
   x <- dbGetQuery(con, select_operations)
   Encoding(x$operation_name_4table) <- "UTF-8"
   # Encoding(x$operation_name_particular) <- "UTF-8"
@@ -562,10 +586,15 @@ ui <- dashboardPage(
   ## Sidebar content
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Исходные данные", tabName = "init_data", icon = icon("home")),
-      menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list")),
-      menuItem("ТБ 1", tabName = "qa_op_table", icon = icon("table")),
-      menuItem("ТБ 2", tabName = "qa_op_table2", icon = icon("table"))
+
+      menuItem("Исходные данные", tabName = "init_data", icon = icon("home"),
+               badgeLabel = "1", badgeColor = "green"),
+      menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
+               badgeLabel = "2", badgeColor = "green"),
+      menuItem("ТБ 1", tabName = "qa_op_table", icon = icon("table"),
+               badgeLabel = "3", badgeColor = "green"),
+      menuItem("ТБ 2", tabName = "qa_op_table2", icon = icon("table"),
+               badgeLabel = "3", badgeColor = "green")
     )
   ),
   ## Body content
@@ -630,11 +659,7 @@ ui <- dashboardPage(
                   ),
                   column(4,fluidPage(
                     htmlOutput("dynamic_select_pressure")
-                    # selectInput("select_pressure", label = h4("Тип клапана в соответствии с давлением"), 
-                    #             choices = pressure_list$pressure_type, 
-                    #             selected = 1,
-                    #             width = "40%")
-                  )
+                    )
                   )
                 )
               )
@@ -659,7 +684,6 @@ ui <- dashboardPage(
       tabItem(tabName = "qa_op_table",
               wellPanel(
                 fluidPage(
-                  
                   h2("Таблица ТБ"),
                   # verbatimTextOutput("info_text"),
                   verbatimTextOutput("valve_code")
@@ -674,15 +698,27 @@ ui <- dashboardPage(
       tabItem(tabName = "qa_op_table2",
               wellPanel(
                 fluidPage(
-                  h2("Таблица ТБ2"),
-                  verbatimTextOutput("valve_code_qa2"),
-                  htmlOutput("qa_table2"),
-                  # # verbatimTextOutput("info_text"),
-                  # verbatimTextOutput("valve_code")
-                  # ,
-                  # htmlOutput("qa_table"),
-                  htmlOutput("text_qa2"),
-                  downloadButton('download_qa2', 'Скачать в *.csv')
+                  useShinyjs(),
+                  div(
+                    id = "main",
+                    h2("Таблица ТБ2"),
+                    verbatimTextOutput("valve_code_qa2"),
+                    htmlOutput("qa_table2"),
+                    # tags$head(tags$style(type="text/css", ".myTableHeadrow {
+                    #                     filter:  progid:DXImageTransform.Microsoft.BasicImage(rotation=0.083);  /* IE6,IE7 */
+                    #                      -ms-filter: 'progid:DXImageTransform.Microsoft.BasicImage(rotation=0.083)'; /* IE8 */
+                    #                      -moz-transform: rotate(-90.0deg);  /* FF3.5+ */
+                    #                      -ms-transform: rotate(-90.0deg);  /* IE9+ */
+                    #                      -o-transform: rotate(-90.0deg);  /* Opera 10.5 */
+                    #                      -webkit-transform: rotate(-90.0deg);  /* Safari 3.1+, Chrome */
+                    #                      transform: rotate(-90.0deg);  /* Standard */
+                    #                     width: 100%; 
+                    #                     table-layout: fixed;
+                    #                      }}")),
+                    htmlOutput("text_qa2"),
+                    downloadButton('download_qa2', 'Скачать в *.csv')
+                  )
+                  
                 )
               )
       )
@@ -750,36 +786,58 @@ server <- function(input, output, session) {
   
   
   reactive_get_definition_of_designations <- reactive({
-    y <- reactive_get_oper_table()
-    z <- which(y$`Радиографический контроль отливок` == '100*100 %')
-    if(length(z) == 0){
-      z <- which(y$`Радиографический контроль отливок` == '100% K3')
-      if(length(z) == 0){
-        z <- which(y$`Радиографический контроль отливок` == '20% K3')
-        if(length(z) == 0){
-          select = NaN
-        }else{
-          select = '20% K3'
-        }
-      }else{
-        select = '100% K3'
-      }
-    }else{
-      select = '100*100 %'
+    qa_frame <- reactive_get_oper_table()
+    qa_frame <- qa_frame[-c(1,2,3)]
+    operation_name_4table <- unlist(qa_frame)
+    qa_frame <- as.data.frame(operation_name_4table)
+    qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
+    operation_name_4table <- unique(qa_frame$operation_name_4table)
+    qa_frame <- as.data.frame(operation_name_4table)
+    qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
+    op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
+                           list_of_operations.operation_name_4table,
+                           list_of_operations.operation_name_4definition
+                           FROM	list_of_operations
+                           WHERE 	list_of_operations.operation_id < 50 AND
+                           list_of_operations.operation_name_4table != '+' AND
+                           list_of_operations.operation_name_4table != '-' AND
+                           list_of_operations.operation_name_4table != '+c' AND
+                           list_of_operations.operation_name_4table !=  'NULL';")
+    Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    defenition_df <- inner_join(op_names, qa_frame, by = "operation_name_4table" )
+    print_string <- ""
+    for( i in 1:length(defenition_df$operation_name_4table)) {
+      print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
     }
-    
-    if(!is.nan(select)){
-      select_full <- paste0("SELECT list_of_operations.operation_name_4table_definition
-                            FROM list_of_operations
-                            WHERE list_of_operations.operation_name_4table='", select, "'")
-      get_def_of_select <- dbGetQuery(con, select_full)
-      Encoding(get_def_of_select$operation_name_4table_definition) <- "UTF-8"
-      to_return <- get_def_of_select$operation_name_4table_definition[1]
-      rreturn <- paste0(select,"  -", to_return)
-      return(rreturn)
-    }else{
-      return(' ')
+    return(print_string)
+  })
+  
+  
+  reactive_get_definition_of_designations_for_file <- reactive({
+    qa_frame <- reactive_get_oper_table()
+    qa_frame <- qa_frame[-c(1,2,3)]
+    operation_name_4table <- unlist(qa_frame)
+    qa_frame <- as.data.frame(operation_name_4table)
+    qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
+    operation_name_4table <- unique(qa_frame$operation_name_4table)
+    qa_frame <- as.data.frame(operation_name_4table)
+    qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
+    op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
+                           list_of_operations.operation_name_4table,
+                           list_of_operations.operation_name_4definition
+                           FROM	list_of_operations
+                           WHERE 	list_of_operations.operation_id < 50 AND
+                           list_of_operations.operation_name_4table != '+' AND
+                           list_of_operations.operation_name_4table != '-' AND
+                           list_of_operations.operation_name_4table != '+c' AND
+                           list_of_operations.operation_name_4table !=  'NULL';")
+    Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    defenition_df <- inner_join(op_names, qa_frame, by = "operation_name_4table" )
+    print_string <- ""
+    for( i in 1:length(defenition_df$operation_name_4table)) {
+      print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
     }
+    return(print_string)
   })
   
   
@@ -793,9 +851,10 @@ server <- function(input, output, session) {
     qa2_frame <- as.data.frame(operation_name_4table)
     qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
-		                       list_of_operations.operation_name_4table
+		                       list_of_operations.operation_name_4table,
+                           list_of_operations.operation_name_4definition
                            FROM	list_of_operations
-                           WHERE 	list_of_operations.operation_id > 50 AND
+                           WHERE 	list_of_operations.operation_id > 49 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
@@ -805,7 +864,7 @@ server <- function(input, output, session) {
     print_string <- ""
     # lapply(1:length(defenition_df$operation_name_4table), function(i) {
     for( i in 1:length(defenition_df$operation_name_4table)) {
-      print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4table[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
+      print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
     }
     return(print_string)
   })
@@ -821,9 +880,10 @@ server <- function(input, output, session) {
     qa2_frame <- as.data.frame(operation_name_4table)
     qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
-                           list_of_operations.operation_name_4table
+                           list_of_operations.operation_name_4table,
+                           list_of_operations.operation_name_4definition
                            FROM	list_of_operations
-                           WHERE 	list_of_operations.operation_id > 50 AND
+                           WHERE 	list_of_operations.operation_id > 49 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
@@ -833,7 +893,7 @@ server <- function(input, output, session) {
     print_string <- ""
     # lapply(1:length(defenition_df$operation_name_4table), function(i) {
     for( i in 1:length(defenition_df$operation_name_4table)) {
-      print_string <- paste0(print_string, defenition_df$operation_name_4table[i], " - ", defenition_df$operation_name_4table_definition[i], "; /n")
+      print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
     }
     return(print_string)
   })
@@ -873,7 +933,7 @@ server <- function(input, output, session) {
   
   reactive_get_rv_drawing_number <- reactive({
     dynamic_part <- input$rv_drawing_number
-    x <- paste0("RV-", dynamic_part)
+    x <- dynamic_part
     return(x)
   })
   
@@ -1027,13 +1087,18 @@ server <- function(input, output, session) {
   
   output$qa_table2 <-
     renderGvis({
-      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 1))
+      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 1, allowHtml = TRUE, showRowNumber = TRUE,
+                                                                        cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
+      ))
     })
   
   output$text <-
     renderText({
       HTML(paste0(
         "<p><b>Обозначения:</b></p>
+        <p>РГК  - радиографический контроль;</p>
+        <p>УЗК  - ультразвуковой контроль;</p>
+        <p>МПД  - магнитопорошковый контроль;</p>
         <p>+   - контроль производится;</p>
         <p>-   - контроль не производится;</p>
         <p>+c  - результаты испытаний подтверждаются сертификатом.</p>",
@@ -1046,6 +1111,11 @@ server <- function(input, output, session) {
     renderText({
       HTML(paste0(
         "<p><b>Обозначения:</b></p>
+        <p>ВК   - входной контроль;</p>
+        <p>ВиК  - визуальный и измерительный контроль;</p>
+        <p>РГК  - радиографический контроль;</p>
+        <p>УЗК  - ультразвуковой контроль;</p>
+        <p>МПД  - магнитопорошковый контроль;</p>
         <p>+   - контроль производится;</p>
         <p>-   - контроль не производится;</p>
         <p>+c  - результаты испытаний подтверждаются сертификатом;</p>",
@@ -1062,17 +1132,20 @@ server <- function(input, output, session) {
     content = function(file) {
       data <- reactiive_get_welding_and_overaly_table()
       header <- paste0(reactive_get_header_of_qa2_table(),"\n")
-      printstring <- reactive_get_definition_of_designations_for_qa2_file()
       bottom <- paste0(
         "Обозначения:
-        +   - контроль производится;
-        -   - контроль не производится;
-        +c  - результаты испытаний подтверждаются сертификатом.",
-        printstring,
+ВК   - входной контроль;
+ВиК  - визуальный и измерительный контроль;
+РГК  - радиографический контроль;
+УЗК  - ультразвуковой контроль;
+МПД  - магнитопорошковый контроль;
+ +   - контроль производится;
+ +c  - результаты испытаний подтверждаются сертификатом;",
         "\n",
-        reactive_get_definition_of_designations())
+        reactive_get_definition_of_designations_for_qa2_file())
+        
       cat(header, file=file, append = TRUE, sep =";" )
-      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
+      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE, quote = FALSE)
       cat(bottom, file=file, append = TRUE, sep =";" )
     }
   )
@@ -1086,16 +1159,26 @@ server <- function(input, output, session) {
       header <- paste0(reactive_get_header_of_qa_table(),"\n")
       bottom <- paste0(
         "Обозначения:
-        +   - контроль производится;
-        -   - контроль не производится;
-        +c  - результаты испытаний подтверждаются сертификатом.",
+РГК  - радиографический контроль;
+УЗК  - ультразвуковой контроль;
+МПД  - магнитопорошковый контроль;
+ +   - контроль производится;
+ -   - контроль не производится;
+ +c  - результаты испытаний подтверждаются сертификатом;",
         "\n",
-        reactive_get_definition_of_designations())
+        reactive_get_definition_of_designations_for_file())
       cat(header, file=file, append = TRUE, sep =";" )
       write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
       cat(bottom, file=file, append = TRUE, sep =";" )
     }
   )
+  
+  # observe({
+  #   toggleState("main", condition = input$select_valve)
+  #   
+  #   # hide("main")
+  # })
+  
 }
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny App ####
@@ -1103,8 +1186,5 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
-# options(shiny.port = 7775)
-# options(shiny.host = "192.168.1.118")
-# static ip from phone
-# options(shiny.host = "192.168.1.119")
+
 
