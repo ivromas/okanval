@@ -892,9 +892,9 @@ server <- function(input, output, session) {
     Encoding(op_names$operation_name_4table) <- "UTF-8"
     defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
     defenition_df <- na.omit(defenition_df)
-    defenition_df <- defenition_df[order(defenition_df$operation_name_def_order),] 
-    defenition_df <- defenition_df[-c(2,4)]
+    defenition_df <- defenition_df[-2]
     defenition_df <- distinct(defenition_df)
+    print_string <- ""
     for( i in 1:length(defenition_df$operation_name_4definition)) {
       print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
     }
@@ -1140,7 +1140,7 @@ server <- function(input, output, session) {
         reactive_get_definition_of_designations_for_qa2_file())
         
       cat(header, file=file, append = TRUE, sep =";" )
-      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE, quote = FALSE)
+      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE, quote = TRUE)
       cat(bottom, file=file, append = TRUE, sep =";" )
     }
   )
@@ -1180,6 +1180,5 @@ server <- function(input, output, session) {
 #_________________________________________________________________________________________________________________________________________________
 
 shinyApp(ui, server)
-
 
 
