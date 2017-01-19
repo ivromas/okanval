@@ -18,13 +18,7 @@ rm(list = ls())
 ### Usful functions ####
 #_________________________________________________________________________________________________________________________________________________
 okan_db_connect <- function() {
-  pw <- {
-    "root"
-  }
-  # loads the PostgreSQL driver
-  drv <- dbDriver("PostgreSQL")
 
-  return(con)
 }
 
 
@@ -791,9 +785,7 @@ server <- function(input, output, session) {
     operation_name_4table <- unlist(qa_frame)
     qa_frame <- as.data.frame(operation_name_4table)
     qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
-    operation_name_4table <- unique(qa_frame$operation_name_4table)
-    qa_frame <- as.data.frame(operation_name_4table)
-    qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
+    qa_frame <- qa_frame %>% distinct(operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
                            list_of_operations.operation_name_4table,
                            list_of_operations.operation_name_4definition
@@ -804,9 +796,13 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table != '+c' AND
                            list_of_operations.operation_name_4table !=  'NULL';")
     Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    Encoding(op_names$operation_name_4table) <- "UTF-8"
     defenition_df <- inner_join(op_names, qa_frame, by = "operation_name_4table" )
+    defenition_df <- na.omit(defenition_df)
+    defenition_df <- defenition_df[-2]
+    defenition_df <- distinct(defenition_df)
     print_string <- ""
-    for( i in 1:length(defenition_df$operation_name_4table)) {
+    for( i in 1:length(defenition_df$operation_name_4definition)) {
       print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
     }
     return(print_string)
@@ -819,9 +815,7 @@ server <- function(input, output, session) {
     operation_name_4table <- unlist(qa_frame)
     qa_frame <- as.data.frame(operation_name_4table)
     qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
-    operation_name_4table <- unique(qa_frame$operation_name_4table)
-    qa_frame <- as.data.frame(operation_name_4table)
-    qa_frame$operation_name_4table <- as.character(qa_frame$operation_name_4table)
+    qa_frame <- qa_frame %>% distinct(operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
                            list_of_operations.operation_name_4table,
                            list_of_operations.operation_name_4definition
@@ -832,9 +826,13 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table != '+c' AND
                            list_of_operations.operation_name_4table !=  'NULL';")
     Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    Encoding(op_names$operation_name_4table) <- "UTF-8"
     defenition_df <- inner_join(op_names, qa_frame, by = "operation_name_4table" )
+    defenition_df <- na.omit(defenition_df)
+    defenition_df <- defenition_df[-2]
+    defenition_df <- distinct(defenition_df)
     print_string <- ""
-    for( i in 1:length(defenition_df$operation_name_4table)) {
+    for( i in 1:length(defenition_df$operation_name_4definition)) {
       print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
     }
     return(print_string)
@@ -847,12 +845,11 @@ server <- function(input, output, session) {
     operation_name_4table <- unlist(qa2_frame)
     qa2_frame <- as.data.frame(operation_name_4table)
     qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
-    operation_name_4table <- unique(qa2_frame$operation_name_4table)
-    qa2_frame <- as.data.frame(operation_name_4table)
-    qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
+    qa2_frame <- qa2_frame %>% distinct(operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
 		                       list_of_operations.operation_name_4table,
-                           list_of_operations.operation_name_4definition
+                           list_of_operations.operation_name_4definition,
+                           list_of_operations.operation_name_def_order
                            FROM	list_of_operations
                            WHERE 	list_of_operations.operation_id > 49 AND
                            list_of_operations.operation_name_4table != '+' AND
@@ -860,10 +857,15 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table != '+c' AND
                            list_of_operations.operation_name_4table !=  'NULL';")
     Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    Encoding(op_names$operation_name_4table) <- "UTF-8"
     defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
+    defenition_df <- na.omit(defenition_df)
+    defenition_df <- defenition_df[order(defenition_df$operation_name_def_order),] 
+    defenition_df <- defenition_df[-c(2,4)]
+    defenition_df <- distinct(defenition_df)
     print_string <- ""
     # lapply(1:length(defenition_df$operation_name_4table), function(i) {
-    for( i in 1:length(defenition_df$operation_name_4table)) {
+    for( i in 1:length(defenition_df$operation_name_4definition)) {
       print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
     }
     return(print_string)
@@ -876,9 +878,7 @@ server <- function(input, output, session) {
     operation_name_4table <- unlist(qa2_frame)
     qa2_frame <- as.data.frame(operation_name_4table)
     qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
-    operation_name_4table <- unique(qa2_frame$operation_name_4table)
-    qa2_frame <- as.data.frame(operation_name_4table)
-    qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
+    qa2_frame <- qa2_frame %>% distinct(operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
                            list_of_operations.operation_name_4table,
                            list_of_operations.operation_name_4definition
@@ -889,10 +889,13 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table != '+c' AND
                            list_of_operations.operation_name_4table !=  'NULL';")
     Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
+    Encoding(op_names$operation_name_4table) <- "UTF-8"
     defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
-    print_string <- ""
-    # lapply(1:length(defenition_df$operation_name_4table), function(i) {
-    for( i in 1:length(defenition_df$operation_name_4table)) {
+    defenition_df <- na.omit(defenition_df)
+    defenition_df <- defenition_df[order(defenition_df$operation_name_def_order),] 
+    defenition_df <- defenition_df[-c(2,4)]
+    defenition_df <- distinct(defenition_df)
+    for( i in 1:length(defenition_df$operation_name_4definition)) {
       print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
     }
     return(print_string)
@@ -951,6 +954,10 @@ server <- function(input, output, session) {
     materials$Material <- as.character(materials$Material)
     
     details_for_welding_list <- get_welding_and_overlay_detail_list(con, valve_name)
+    if("Корпус + патрубок" %in% details_for_welding_list$detail_4con_name){
+      row_to_keep = which(details_for_welding_list$detail_4con_name != "Перех.патрубок")
+      details_for_welding_list <- details_for_welding_list[row_to_keep,]
+    }
     if(is.data.frame(details_for_welding_list)){
       details_for_welding_list <- left_join(details_for_welding_list, materials,
                                              by = c("detail_name_rus" = "Detail"))
@@ -985,18 +992,6 @@ server <- function(input, output, session) {
       colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
       dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(1, 2), ]
       dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Деталь")
-      # split detail and material to seperate columns
-      # x<-strsplit(dataframe_to_be_retuned.t$`Деталь`,"/")
-      # x<- as.data.frame(x)
-      # x.t <- t(x)
-      # x <- as.data.frame(x.t)
-      # dataframe_to_be_retuned.t$Detail <- x$V1
-      # dataframe_to_be_retuned.t$Material <- x$V2
-      # dataframe_to_be_retuned.t$`Деталь` <- NULL
-      # dataframe_to_be_retuned.t$`Обозначение чертежа детали` <- drawing_number_of_detail$names
-      # re-ordering indexes
-      # dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(25,26,27,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)]
-      # return(dataframe_to_be_retuned)
       return(dataframe_to_be_retuned.t)
       
     }
@@ -1051,7 +1046,7 @@ server <- function(input, output, session) {
       detail_list2 <- get_overlay_detail_list(con, input$select_valve)
       if(is.data.frame(detail_list2)){
         lapply(1:length(detail_list2$detail_4con_name), function(i) {
-          detail_current = detail_list2$detail_4con_name[i]
+          detail_current = detail_list2$detail_name_rus[i]
           Encoding(detail_current) <- "UTF-8"
           material_4_detail <- get_overlay_list(con)
           print((paste0("overlay_",i)))
