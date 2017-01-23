@@ -448,7 +448,8 @@ get_welding_and_overlay_detail_list <- function(con, valve_name){
   select_welding_det <- paste0("SELECT
                    detail_for_con.detail_4con_name,
                   detail_for_con.detail_4con_id,
-                  detail_for_con.detail_name_rus
+                  detail_for_con.detail_name_rus,
+                  detail_for_con.detail_name_rus_welding
                    FROM 
                    public.valve, 
                    public.detail_4con_to_valve, 
@@ -463,6 +464,7 @@ get_welding_and_overlay_detail_list <- function(con, valve_name){
   {
     Encoding(x$detail_4con_name) <- "UTF-8"
     Encoding(x$detail_name_rus) <- "UTF-8"
+    Encoding(x$detail_name_rus_welding) <- "UTF-8"
     return(x)
   }else{
     return(NaN)
@@ -954,28 +956,29 @@ server <- function(input, output, session) {
     qa_type_name <- input$select_qa_type
     tempr_name <- input$select_tempr
     valve_name <- input$select_valve
-    frame_with_names_of_operations <- get_distinct_names_of_qa_operations(con,type = "QA 2")
-    dataframe_to_be_retuned <- frame_with_names_of_operations
+    dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 2")
+
     
     materials <- reactive_get_oper_table()
-    materials <- materials[c(1,2)]
-    materials$Detail <- as.character(materials$Detail)
-    materials$Material <- as.character(materials$Material)
-    
+    materials <- materials[c(1,2,3)]
+    materials$Деталь <- as.character(materials$Деталь)
+    materials$Материал <- as.character(materials$Материал)
+ 
     details_for_welding_list <- get_welding_and_overlay_detail_list(con, valve_name)
     if("Корпус + патрубок" %in% details_for_welding_list$detail_4con_name){
       row_to_keep = which(details_for_welding_list$detail_4con_name != "Перех.патрубок")
       details_for_welding_list <- details_for_welding_list[row_to_keep,]
     }
     if(is.data.frame(details_for_welding_list)){
-      details_for_welding_list <- left_join(details_for_welding_list, materials,
-                                             by = c("detail_name_rus" = "Detail"))
-      
+      # details_for_welding_list <- left_join(details_for_welding_list, materials$Деталь,
+      #                                        by = c("detail_name_rus" = "Деталь"))
+      # 
       detail_list2 <- get_overlay_detail_list(con, input$select_valve)
       if(is.data.frame(detail_list2)){
         overlay_detail_list <- get_overlay_detail_list(con, valve_name)
         overlay_detail_list <- overlay_detail_list[(-c(2))]
         overlay_detail_list$input_overlay_type <- "0"
+        
         for(i in 1 : length(overlay_detail_list$detail_4con_name)){
           detail_name <- overlay_detail_list$detail_4con_name[i]
           name <- paste0("overlay_", i)
@@ -985,9 +988,31 @@ server <- function(input, output, session) {
         details_for_welding_list <- left_join(details_for_welding_list, overlay_detail_list,
                                                by = "detail_4con_name")
       }
-        
+      
+      details_for_welding_list$`Материал` <- "0"
+      details_for_welding_list$`Обозначение чертежа деталей` <- "0"
+      
       for(i in 1 : length(details_for_welding_list$detail_name_rus)) {
-        material_type_separate_id <- get_material_input_info(con,details_for_welding_list$Material[i],
+        # i <- 3
+        if(!is.na(details_for_welding_list$detail_name_rus_welding[i])){
+          x1 <- which(details_for_welding_list$detail_name_rus_welding[i] == materials$Деталь)
+          xx1 <- materials[x1,]
+          x2 <- which(details_for_welding_list$detail_name_rus[i] == materials$Деталь)
+          xx2 <- materials[x2,]
+          det_materilal <- paste0(xx1$Материал[1], "+", xx2$Материал[1])
+          det_designation <- paste0(xx1$`Обозначение чертежа детали`[1], " & ", xx2$`Обозначение чертежа детали`[1])
+          material_of_current_detail <- xx2$Материал[1]
+        }else{
+          x2 <- which(details_for_welding_list$detail_name_rus[i] == materials$Деталь)
+          xx2 <- materials[x2,]
+          det_materilal <- paste0(xx2$Материал[1])
+          det_designation <- paste0(xx2$`Обозначение чертежа детали`[1])
+          material_of_current_detail <- xx2$Материал[1]
+        }
+        details_for_welding_list$Материал[i] <- det_materilal
+        details_for_welding_list$`Обозначение чертежа деталей`[i] <- det_designation
+        
+        material_type_separate_id <- get_material_input_info(con,material_of_current_detail,
                                       type = "material type separate")
         connection_type_id <- get_conncetion_type_info(con, details_for_welding_list$detail_4con_name[i],
                                                        type = "id")
@@ -1001,6 +1026,13 @@ server <- function(input, output, session) {
       colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
       dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(1, 2), ]
       dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Деталь")
+      
+      names(details_for_welding_list)[names(details_for_welding_list)=="detail_4con_name"] <- "Деталь"
+      details_for_welding_list <- details_for_welding_list[-c(2,3,4)]
+      
+      dataframe_to_be_retuned.t <- inner_join(dataframe_to_be_retuned.t, details_for_welding_list, 
+                                              by = "Деталь")
+      dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(1,22,23,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)]
       return(dataframe_to_be_retuned.t)
       
     }
@@ -1091,8 +1123,8 @@ server <- function(input, output, session) {
   
   output$qa_table2 <-
     renderGvis({
-      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 1, allowHtml = TRUE, showRowNumber = TRUE,
-                                                                        cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
+      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 3, allowHtml = TRUE, showRowNumber = FALSE
+                                                                        # cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
       ))
     })
   
