@@ -18,7 +18,20 @@ rm(list = ls())
 ### Usful functions ####
 #_________________________________________________________________________________________________________________________________________________
 okan_db_connect <- function() {
-
+  pw <- {
+    "root"
+  }
+  # loads the PostgreSQL driver
+  drv <- dbDriver("PostgreSQL")
+  # creates a connection to the postgres database
+  # note that "con" will be used later in each connection to the database
+  con <- dbConnect(drv, dbname = "qa_db",
+                   host = "okanval.okan.su", port = 6543,
+                   user = "postgres", password = pw)
+  # con <- dbConnect(drv, dbname = "qa_db",
+  #                  host = "localhost", port = 5432,
+  #                  user = "postgres", password = pw)
+  return(con)
 }
 
 
@@ -331,10 +344,9 @@ get_distinct_names_of_qa_operations <- function(con, type = NaN){
   if(type == "QA 1"){
     x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
                         FROM list_of_operations
-                        WHERE list_of_operations.operation_id < 50")
+                        WHERE list_of_operations.operation_id < 46")
     Encoding(x$operation_name_particular) <- "UTF-8"
     x <- x[order(x$operation_order),]
-    x$join_key <- as.integer(seq(1, length(x$operation_name_particular), by = 1))
     return(x)
   } else if(type == "QA 2"){
     x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
@@ -427,8 +439,6 @@ get_qa_operations_for_detail <-function(con, valve_name, qa_type, tempr, tempr_o
   Encoding(x$operation_name_4table) <- "UTF-8"
   # Encoding(x$operation_name_particular) <- "UTF-8"
   x <- x[order(x$operation_order),]
-  x$join_key <- as.integer(seq(1, length(x$operation_order), by = 1))
-  x$operation_order <- NULL 
   return(x)
 }
 
@@ -750,12 +760,11 @@ server <- function(input, output, session) {
         paste0(reactive_get_rv_drawing_number(), "-",get_detail_input_info(con, detail, type = "drawing name"))
       x <- get_qa_operations_for_detail(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material)
       names(x)[names(x) == 'operation_name_4table'] <- paste0(detail, "/", material)
-      dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "join_key")
+      dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "operation_order")
       rm(x, material, name, detail)
       
     }
     
-    dataframe_to_be_retuned$join_key <- NULL
     # transponse output data
     dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned)
     dataframe_to_be_retuned.t <- as.data.frame(dataframe_to_be_retuned.t )
@@ -767,8 +776,8 @@ server <- function(input, output, session) {
     x<- as.data.frame(x)
     x.t <- t(x)
     x <- as.data.frame(x.t)
-    dataframe_to_be_retuned.t$Detail <- x$V1
-    dataframe_to_be_retuned.t$Material <- x$V2
+    dataframe_to_be_retuned.t$`Деталь` <- x$V1
+    dataframe_to_be_retuned.t$`Материал` <- x$V2
     dataframe_to_be_retuned.t$`Detail/Material` <- NULL
     dataframe_to_be_retuned.t$`Обозначение чертежа детали` <- drawing_number_of_detail$names
     # re-ordering indexes
@@ -1012,12 +1021,12 @@ server <- function(input, output, session) {
     renderUI({
       current_qa_type <- input$select_qa_type
       if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
-        selectInput("select_pressure", label = h4("Тип клапана в соответствии с давлением"),
+        selectInput("select_pressure", label = h4("Класс давления по ANSI"),
                     choices = pressure_list$pressure_type[2],
                     selected = 1,
                     width = "40%")
       }else {
-        selectInput("select_pressure", label = h4("Тип клапана в соответствии с давлением"),
+        selectInput("select_pressure", label = h4("Класс давления по ANSI"),
                     choices = pressure_list$pressure_type,
                     selected = 1,
                     width = "40%")
@@ -1181,4 +1190,9 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
+# options(shiny.port = 7775)
+# options(shiny.host = "192.168.1.118")
+
+# options(shiny.port = 6545)
+# options(shiny.host = "192.168.1.59")
 
