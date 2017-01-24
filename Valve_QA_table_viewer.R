@@ -915,7 +915,15 @@ server <- function(input, output, session) {
   
   reactive_get_valve_code <- reactive({
     qa_type <- input$select_qa_type
-    dn <- input$dn_value
+    select <- paste0("SELECT 
+                     dn_4_code
+                     FROM 
+                     public.dn
+                     WHERE 
+                     dn.dn_value = '", input$dn_value,"';
+                     ")
+    dn <- dbGetQuery(con,select)
+    dn<- dn$dn_4_code[1]
     valve_type <- get_valve_input_info(con, input$select_valve, type = "type")
     material <- input$material_1
     material_type <- get_material_input_info(con, input$material_1, type = "body material type")
@@ -991,6 +999,7 @@ server <- function(input, output, session) {
       
       details_for_welding_list$`Материал` <- "0"
       details_for_welding_list$`Обозначение чертежа деталей` <- "0"
+      # Encoding(details_for_welding_list$`Обозначение чертежа деталей`) <- "ASCII" 
       
       for(i in 1 : length(details_for_welding_list$detail_name_rus)) {
         # i <- 3
@@ -999,7 +1008,7 @@ server <- function(input, output, session) {
           xx1 <- materials[x1,]
           x2 <- which(details_for_welding_list$detail_name_rus[i] == materials$Деталь)
           xx2 <- materials[x2,]
-          det_materilal <- paste0(xx1$Материал[1], "+", xx2$Материал[1])
+          det_materilal <- paste0(xx1$Материал[1], " + ", xx2$Материал[1])
           det_designation <- paste0(xx1$`Обозначение чертежа детали`[1], " & ", xx2$`Обозначение чертежа детали`[1])
           material_of_current_detail <- xx2$Материал[1]
         }else{
