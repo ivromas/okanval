@@ -276,7 +276,7 @@ get_material_list <- function(con, detail, valve_name){
                               WHERE (((detail.detail_id)=",detail_id,"))"
   )
   x <- dbGetQuery(con, selected_material)
-  # Encoding(x$material_name) <- "UTF-8"
+  Encoding(x$material_name) <- "UTF-8"
   return(x)
 }
 
@@ -344,14 +344,14 @@ get_distinct_names_of_qa_operations <- function(con, type = NaN){
   if(type == "QA 1"){
     x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
                         FROM list_of_operations
-                        WHERE list_of_operations.operation_id < 46")
+                        WHERE list_of_operations.operation_id NOT BETWEEN 46 AND 103")
     Encoding(x$operation_name_particular) <- "UTF-8"
     x <- x[order(x$operation_order),]
     return(x)
   } else if(type == "QA 2"){
     x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
                         FROM list_of_operations
-                   WHERE list_of_operations.operation_id > 50")
+                   WHERE list_of_operations.operation_id NOT BETWEEN 50 AND 103")
     Encoding(x$operation_name_particular) <- "UTF-8"
     x <- x[order(x$operation_order),]
     as.integer(x$operation_order)
@@ -377,7 +377,9 @@ get_qa_operations_for_detail <-function(con, valve_name, qa_type, tempr, tempr_o
   detail_id <- get_detail_input_info(con, detail, type = "id")
   # get material_id
   material_sep_id <- get_material_input_info(con, material, type = "material type separate")
-  
+  if(material_sep_id == 9){
+    return(NaN)
+  }
   # шпильки
   if(detail_id == 5 || detail_id == 31){
     material_sep_id <- 6
@@ -432,7 +434,7 @@ get_qa_operations_for_detail <-function(con, valve_name, qa_type, tempr, tempr_o
                                 material_type_separate.material_type_separete_id =  ",material_sep_id ,"AND 
                                 tempr.tempr_id = ",tempr_id ,"AND 
                                 tempr_operation.tempr_operation_id = ",tempr_oper_id," AND 
-                                list_of_operations.operation_id < 50 AND 
+                                list_of_operations.operation_id NOT BETWEEN 50 AND 103 AND
                                 pressure.pressure_id =", pressure_id,";")
   
   x <- dbGetQuery(con, select_operations)
@@ -752,18 +754,24 @@ server <- function(input, output, session) {
     # drawing_number_of_detail <- data.frame(names = 0)
     drawing_number_of_detail <- data.frame(names=as.character(seq(length(detail_list$detail_name_rus))),
                                            stringsAsFactors=FALSE) 
+    drawing_number_of_detail$details <- detail_list$detail_name_rus
     # drawing_number_of_detail$name <- x$valve_id
     for(i in 1 : length(detail_list$detail_name_rus)) {
       name <- paste0("material_", i)
       material <- input[[name]]
       detail = detail_list$detail_name_rus[i]
-      x<-get_detail_input_info(con, detail, type = "drawing name")
-      drawing_number_of_detail$names[i] <-
-        paste0(reactive_get_rv_drawing_number(), "-",get_detail_input_info(con, detail, type = "drawing name"))
       x <- get_qa_operations_for_detail(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material)
-      names(x)[names(x) == 'operation_name_4table'] <- paste0(detail, "/", material)
-      dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "operation_order")
-      rm(x, material, name, detail)
+      if(is.data.frame(x)){
+        drawing_number_of_detail$names[i] <-
+          paste0(reactive_get_rv_drawing_number(), "-",get_detail_input_info(con, detail, type = "drawing name"))
+        names(x)[names(x) == 'operation_name_4table'] <- paste0(detail, "/", material)
+        dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "operation_order")
+        rm(x, material, name, detail)
+      }else{
+        del <-  which(drawing_number_of_detail$details == detail_list$detail_name_rus[i])
+        drawing_number_of_detail <- drawing_number_of_detail[-c(del),]
+        rm(material, name, detail)
+      }
       
     }
     
@@ -801,7 +809,7 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table,
                            list_of_operations.operation_name_4definition
                            FROM	list_of_operations
-                           WHERE 	list_of_operations.operation_id < 50 AND
+                           WHERE 	list_of_operations.operation_id NOT BETWEEN 50 AND 103 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
@@ -831,7 +839,7 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table,
                            list_of_operations.operation_name_4definition
                            FROM	list_of_operations
-                           WHERE 	list_of_operations.operation_id < 50 AND
+                           WHERE 	list_of_operations.operation_id NOT BETWEEN 50 AND 103 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
@@ -862,7 +870,7 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4definition,
                            list_of_operations.operation_name_def_order
                            FROM	list_of_operations
-                           WHERE 	list_of_operations.operation_id > 49 AND
+                           WHERE 	list_of_operations.operation_id  BETWEEN 50 AND 103 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
@@ -894,7 +902,7 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table,
                            list_of_operations.operation_name_4definition
                            FROM	list_of_operations
-                           WHERE 	list_of_operations.operation_id > 49 AND
+                           WHERE 	list_of_operations.operation_id  BETWEEN 50 AND 103 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
@@ -915,7 +923,15 @@ server <- function(input, output, session) {
   
   reactive_get_valve_code <- reactive({
     qa_type <- input$select_qa_type
-    dn <- input$dn_value
+    select <- paste0("SELECT 
+                     dn_4_code
+                     FROM 
+                     public.dn
+                     WHERE 
+                     dn.dn_value = '", input$dn_value,"';
+                     ")
+    dn <- dbGetQuery(con,select)
+    dn<- dn$dn_4_code[1]
     valve_type <- get_valve_input_info(con, input$select_valve, type = "type")
     material <- input$material_1
     material_type <- get_material_input_info(con, input$material_1, type = "body material type")
@@ -991,6 +1007,7 @@ server <- function(input, output, session) {
       
       details_for_welding_list$`Материал` <- "0"
       details_for_welding_list$`Обозначение чертежа деталей` <- "0"
+      # Encoding(details_for_welding_list$`Обозначение чертежа деталей`) <- "ASCII" 
       
       for(i in 1 : length(details_for_welding_list$detail_name_rus)) {
         # i <- 3
@@ -999,7 +1016,7 @@ server <- function(input, output, session) {
           xx1 <- materials[x1,]
           x2 <- which(details_for_welding_list$detail_name_rus[i] == materials$Деталь)
           xx2 <- materials[x2,]
-          det_materilal <- paste0(xx1$Материал[1], "+", xx2$Материал[1])
+          det_materilal <- paste0(xx1$Материал[1], " + ", xx2$Материал[1])
           det_designation <- paste0(xx1$`Обозначение чертежа детали`[1], " & ", xx2$`Обозначение чертежа детали`[1])
           material_of_current_detail <- xx2$Материал[1]
         }else{
