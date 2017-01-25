@@ -351,7 +351,7 @@ get_distinct_names_of_qa_operations <- function(con, type = NaN){
   } else if(type == "QA 2"){
     x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
                         FROM list_of_operations
-                   WHERE list_of_operations.operation_id NOT BETWEEN 50 AND 103")
+                   WHERE list_of_operations.operation_id BETWEEN 50 AND 103")
     Encoding(x$operation_name_particular) <- "UTF-8"
     x <- x[order(x$operation_order),]
     as.integer(x$operation_order)
