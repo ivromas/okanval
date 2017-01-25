@@ -893,10 +893,15 @@ server <- function(input, output, session) {
     defenition_df <- distinct(defenition_df)
     print_string <- ""
     # lapply(1:length(defenition_df$operation_name_4table), function(i) {
-    for( i in 1:length(defenition_df$operation_name_4definition)) {
-      print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
+    if(!is.na(defenition_df$operation_name_4definition[1])){
+      for( i in 1:length(defenition_df$operation_name_4definition)) {
+        print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
+      }
+      return(print_string)
+    }else{
+      print_string <- paste0("<p>","","</p>")
+      return(" ")
     }
-    return(print_string)
   })
   
   
@@ -923,10 +928,15 @@ server <- function(input, output, session) {
     defenition_df <- defenition_df[-2]
     defenition_df <- distinct(defenition_df)
     print_string <- ""
-    for( i in 1:length(defenition_df$operation_name_4definition)) {
-      print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
+    if(!is.na(defenition_df$operation_name_4definition[1])){
+      for( i in 1:length(defenition_df$operation_name_4definition)) {
+        print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
+      }
+      return(print_string)
+    }else{
+      print_string <- paste0("","","")
+      return(" ")
     }
-    return(print_string)
   })
   
   
