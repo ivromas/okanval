@@ -1002,6 +1002,7 @@ server <- function(input, output, session) {
       details_for_welding_list$`Кат.сварных соединений`[yy] <- qa_type_welding
       details_for_welding_list$`Кат.сварных соединений`[yyy] <- "-"
       detail_list2 <- get_overlay_detail_list(con, input$select_valve)
+      
       if(is.data.frame(detail_list2)){
         overlay_detail_list <- get_overlay_detail_list(con, valve_name)
         overlay_detail_list <- overlay_detail_list[(-c(2))]
@@ -1017,10 +1018,13 @@ server <- function(input, output, session) {
                                                by = "detail_4con_name")
       }
       
+      x <- which(details_for_welding_list$input_overlay_type == "Отсутствует")
+      x <- details_for_welding_list[x,]
+      details_for_welding_list <- anti_join(details_for_welding_list,x, by = "input_overlay_type")
+      
       details_for_welding_list$`Материал` <- "0"
       details_for_welding_list$`Обозначение чертежа деталей` <- "0"
       for(i in 1 : length(details_for_welding_list$detail_name_rus)) {
-        # i <- 3
         if(!is.na(details_for_welding_list$detail_name_rus_welding[i])){
           x1 <- which(details_for_welding_list$detail_name_rus_welding[i] == materials$Деталь)
           xx1 <- materials[x1,]
