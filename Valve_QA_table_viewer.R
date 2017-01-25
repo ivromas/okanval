@@ -136,6 +136,13 @@ get_qa_input_info <- function(con, valve_qa_type_name, type = NaN) {
     qa_type_name_frame <- dbGetQuery(con, qa_select)
     qa_type_name <- qa_type_name_frame$valve_qa_type_4code[1]
     return(qa_type_name)
+  }else if(type == "qa welding") {
+    qa_select <- paste0("SELECT valve_qa_type.valve_qa_type_4qa2
+                        FROM valve_qa_type
+                        WHERE valve_qa_type.valve_qa_type_name='", valve_qa_type_name,"'")
+    qa_type_name_frame <- dbGetQuery(con, qa_select)
+    qa_type_name <- qa_type_name_frame$valve_qa_type_4qa2[1]
+    return(qa_type_name)
   }else {
     return(NaN)
   }
@@ -451,8 +458,10 @@ get_welding_and_overlay_detail_list <- function(con, valve_name){
                    detail_for_con.detail_4con_name,
                   detail_for_con.detail_4con_id,
                   detail_for_con.detail_name_rus,
-                  detail_for_con.detail_name_rus_welding
-                   FROM 
+                  detail_for_con.detail_name_rus_welding,
+                  detail_for_con.welding_type,
+                  detail_for_con.number_of_welds
+                  FROM 
                    public.valve, 
                    public.detail_4con_to_valve, 
                    public.detail_for_con
@@ -860,7 +869,7 @@ server <- function(input, output, session) {
   
   reactive_get_definition_of_designations_for_qa2 <- reactive({
     qa2_frame <- reactiive_get_welding_and_overaly_table()
-    qa2_frame <- qa2_frame[-c(1,2,3)]
+    qa2_frame <- qa2_frame[-c(1,2,3,4,5,6)]
     operation_name_4table <- unlist(qa2_frame)
     qa2_frame <- as.data.frame(operation_name_4table)
     qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
@@ -893,7 +902,7 @@ server <- function(input, output, session) {
   
   reactive_get_definition_of_designations_for_qa2_file <- reactive({
     qa2_frame <- reactiive_get_welding_and_overaly_table()
-    qa2_frame <- qa2_frame[-c(1,2,3)]
+    qa2_frame <- qa2_frame[-c(1,2,3,4,5,6)]
     operation_name_4table <- unlist(qa2_frame)
     qa2_frame <- as.data.frame(operation_name_4table)
     qa2_frame$operation_name_4table <- as.character(qa2_frame$operation_name_4table)
@@ -970,6 +979,7 @@ server <- function(input, output, session) {
   
   reactiive_get_welding_and_overaly_table <- reactive({
     qa_type_name <- input$select_qa_type
+    qa_type_welding <- get_qa_input_info(con, qa_type_name, type = "qa welding")
     tempr_name <- input$select_tempr
     valve_name <- input$select_valve
     dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 2")
@@ -986,9 +996,11 @@ server <- function(input, output, session) {
       details_for_welding_list <- details_for_welding_list[row_to_keep,]
     }
     if(is.data.frame(details_for_welding_list)){
-      # details_for_welding_list <- left_join(details_for_welding_list, materials$Деталь,
-      #                                        by = c("detail_name_rus" = "Деталь"))
-      # 
+      details_for_welding_list$`Кат.сварных соединений` <- details_for_welding_list$detail_name_rus_welding
+      yy <- which(!is.na(details_for_welding_list$`Кат.сварных соединений`))
+      yyy <- which(is.na(details_for_welding_list$`Кат.сварных соединений`))
+      details_for_welding_list$`Кат.сварных соединений`[yy] <- qa_type_welding
+      details_for_welding_list$`Кат.сварных соединений`[yyy] <- "-"
       detail_list2 <- get_overlay_detail_list(con, input$select_valve)
       if(is.data.frame(detail_list2)){
         overlay_detail_list <- get_overlay_detail_list(con, valve_name)
@@ -1007,8 +1019,6 @@ server <- function(input, output, session) {
       
       details_for_welding_list$`Материал` <- "0"
       details_for_welding_list$`Обозначение чертежа деталей` <- "0"
-      # Encoding(details_for_welding_list$`Обозначение чертежа деталей`) <- "ASCII" 
-      
       for(i in 1 : length(details_for_welding_list$detail_name_rus)) {
         # i <- 3
         if(!is.na(details_for_welding_list$detail_name_rus_welding[i])){
@@ -1022,7 +1032,7 @@ server <- function(input, output, session) {
         }else{
           x2 <- which(details_for_welding_list$detail_name_rus[i] == materials$Деталь)
           xx2 <- materials[x2,]
-          det_materilal <- paste0(xx2$Материал[1])
+          det_materilal <- paste0(xx2$Материал[1], " + ", details_for_welding_list$input_overlay_type[i])
           det_designation <- paste0(xx2$`Обозначение чертежа детали`[1])
           material_of_current_detail <- xx2$Материал[1]
         }
@@ -1045,11 +1055,13 @@ server <- function(input, output, session) {
       dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Деталь")
       
       names(details_for_welding_list)[names(details_for_welding_list)=="detail_4con_name"] <- "Деталь"
-      details_for_welding_list <- details_for_welding_list[-c(2,3,4)]
+      names(details_for_welding_list)[names(details_for_welding_list)=="number_of_welds"] <- "Кол-во сварных швов"
+      names(details_for_welding_list)[names(details_for_welding_list)=="welding_type"] <- "Способ сварки/наплавки"
+      details_for_welding_list <- details_for_welding_list[-c(2,3,4,8)]
       
       dataframe_to_be_retuned.t <- inner_join(dataframe_to_be_retuned.t, details_for_welding_list, 
                                               by = "Деталь")
-      dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(1,22,23,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)]
+      dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(1,24,25,22,23,21,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)]
       return(dataframe_to_be_retuned.t)
       
     }
@@ -1123,7 +1135,7 @@ server <- function(input, output, session) {
   
   output$qa_table <-
     renderGvis({
-      gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 3, page = 'enable', headerRow = 
+      gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 2, page = 'enable', headerRow = 
                                                           "tr.rotate {
                                                         white-space: nowrap;
                                                         -webkit-transform-origin: 65px 60px;
@@ -1140,7 +1152,7 @@ server <- function(input, output, session) {
   
   output$qa_table2 <-
     renderGvis({
-      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 3, allowHtml = TRUE, showRowNumber = FALSE
+      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 2, allowHtml = TRUE, showRowNumber = FALSE
                                                                         # cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
       ))
     })
