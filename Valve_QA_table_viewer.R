@@ -1,5 +1,6 @@
-#
 # coding UTF-8
+
+
 library(shiny)
 library(shinydashboard)
 library(RPostgreSQL)
@@ -10,6 +11,7 @@ library(reshape)
 library(tidyr)
 library(shinythemes)
 library(shinyjs)
+library(ReporteRs)
 
 
 rm(list = ls())
@@ -369,86 +371,89 @@ get_distinct_names_of_qa_operations <- function(con, type = NaN){
 }
 
 
-get_qa_operations_for_detail <-function(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material){
-  # get valve id
-  valve_id <- get_valve_input_info(con, valve_name, type = "id")
-  # get qa_type id
-  qa_type_id <- get_qa_input_info(con, qa_type, type = "id")
-  # get tempr_id
-  tempr_id <- get_tempr_input_info(con, tempr, type = "id")
-  # get tempr_oper_id
-  tempr_oper_id <- get_tempr_oper_input_info(con, tempr_oper, type = "id")
-  # get pressure_id
-  pressure_id <- get_pressure_input_info(con, pressure, type = "id")
-  # get detail id
-  detail_id <- get_detail_input_info(con, detail, type = "id")
-  # get material_id
-  material_sep_id <- get_material_input_info(con, material, type = "material type separate")
-  if(material_sep_id == 9){
-    return(NaN)
-  }
-  # шпильки
-  if(detail_id == 5 || detail_id == 31){
-    material_sep_id <- 6
-  }else if(detail_id == 6 || detail_id == 32){
-    material_sep_id <- 7
-  }else{
-    material_sep_id <- material_sep_id
-  }
-    select_operations <- paste0("SELECT
-                                list_of_operations.operation_order, 
-                                list_of_operations.operation_name_4table
-                                FROM 
-                                public.list_of_operations, 
-                                public.operations_qa_dependency, 
-                                public.tempr, 
-                                public.tempr_operation, 
-                                public.pressure, 
-                                public.material_type_separate, 
-                                public.valve_qa_type, 
-                                public.valve, 
-                                public.valve_id_to_socet, 
-                                public.valve_type, 
-                                public.detail, 
-                                public.hydro, 
-                                public.ferrite_phase, 
-                                public.radiography, 
-                                public.detail_to_hydro, 
-                                public.detail_to_radiography, 
-                                public.ferrite_phase_to_detail
-                                WHERE 
-                                operations_qa_dependency.operation_id = list_of_operations.operation_id AND
-                                tempr.tempr_id = operations_qa_dependency.tempr_id AND
-                                tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id AND
-                                pressure.pressure_id = operations_qa_dependency.pressure_id AND
-                                material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id AND
-                                valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id AND
-                                valve.valve_id = valve_id_to_socet.valve_id AND
-                                valve_id_to_socet.valve_type_by_socet = valve_type.valve_type_by_socet AND
-                                valve_type.valve_type_by_socet = operations_qa_dependency.valve_type_by_socet AND
-                                hydro.hydro_id = operations_qa_dependency.hydro_id AND
-                                ferrite_phase.fp_id = operations_qa_dependency.fp_id AND
-                                ferrite_phase.fp_id = ferrite_phase_to_detail.fp_id AND
-                                radiography.rad_id = operations_qa_dependency.rad_id AND
-                                radiography.rad_id = detail_to_radiography.rad_id AND
-                                detail_to_hydro.hydro_id = hydro.hydro_id AND
-                                detail_to_hydro.detail_id = detail.detail_id AND
-                                detail_to_radiography.detail_id = detail.detail_id AND
-                                ferrite_phase_to_detail.detail_id = detail.detail_id AND
-                                valve.valve_id = ",valve_id," AND 
-                                valve_qa_type.valve_qa_type_id = ",qa_type_id ,"AND 
-                                detail.detail_id = ",detail_id ,"AND 
-                                material_type_separate.material_type_separete_id =  ",material_sep_id ,"AND 
-                                tempr.tempr_id = ",tempr_id ,"AND 
-                                tempr_operation.tempr_operation_id = ",tempr_oper_id," AND 
-                                list_of_operations.operation_id NOT BETWEEN 50 AND 103 AND
-                                pressure.pressure_id =", pressure_id,";")
-  
-  x <- dbGetQuery(con, select_operations)
-  Encoding(x$operation_name_4table) <- "UTF-8"
-  # Encoding(x$operation_name_particular) <- "UTF-8"
-  x <- x[order(x$operation_order),]
-  return(x)
+get_qa_operations_for_detail <-
+  function(con, valve_name, qa_type_name, tempr_name, tempr_oper_name, pressure_name, detail_name, material_sep_id){
+    # get valve id
+    valve_id <- get_valve_input_info(con, valve_name, type = "id")
+    # get qa_type id
+    qa_type_id <- get_qa_input_info(con, qa_type_name, type = "id")
+    # get tempr_id
+    tempr_id <- get_tempr_input_info(con, tempr_name, type = "id")
+    # get tempr_oper_id
+    tempr_oper_id <- get_tempr_oper_input_info(con, tempr_oper_name, type = "id")
+    # get pressure_id
+    pressure_id <- get_pressure_input_info(con, pressure_name, type = "id")
+    # get detail id
+    detail_id <- get_detail_input_info(con, detail_name, type = "id")
+    if(material_sep_id == 9){
+      return(NaN)
+    }
+    # шпильки
+    if(detail_id == 5 || detail_id == 31){
+      material_sep_id <- 6
+    }else if(detail_id == 6 || detail_id == 32){
+      material_sep_id <- 7
+    }else{
+      material_sep_id <- material_sep_id
+    }
+      select_operations <- paste0("SELECT 
+  list_of_operations.operation_order, 
+                                  list_of_operations.operation_name_4table
+                                  FROM 
+                                  public.valve, 
+                                  public.valve_qa_type, 
+                                  public.pressure, 
+                                  public.tempr_operation, 
+                                  public.tempr, 
+                                  public.operations_qa_dependency, 
+                                  public.material_type_separate, 
+                                  public.list_of_operations, 
+                                  public.detail, 
+                                  public.ferrite_phase, 
+                                  public.hydro, 
+                                  public.radiography, 
+                                  public.valve_to_bellow, 
+                                  public.valve_type, 
+                                  public.valve_bellow_type, 
+                                  public.valve_id_to_socet, 
+                                  public.detail_to_hydro, 
+                                  public.detail_to_radiography, 
+                                  public.ferrite_phase_to_detail
+                                  WHERE 
+                                  valve.valve_id = valve_to_bellow.valve_id AND
+                                  valve.valve_id = valve_id_to_socet.valve_id AND
+                                  valve_qa_type.valve_qa_type_id = operations_qa_dependency.valve_qa_type_id AND
+                                  pressure.pressure_id = operations_qa_dependency.pressure_id AND
+                                  tempr_operation.tempr_operation_id = operations_qa_dependency.tempr_operation_id AND
+                                  tempr.tempr_id = operations_qa_dependency.tempr_id AND
+                                  material_type_separate.material_type_separete_id = operations_qa_dependency.material_type_separete_id AND
+                                  list_of_operations.operation_id = operations_qa_dependency.operation_id AND
+                                  detail.detail_id = ferrite_phase_to_detail.detail_id AND
+                                  ferrite_phase.fp_id = operations_qa_dependency.fp_id AND
+                                  hydro.hydro_id = operations_qa_dependency.hydro_id AND
+                                  radiography.rad_id = operations_qa_dependency.rad_id AND
+                                  valve_to_bellow.valve_bellow_id = valve_bellow_type.valve_bellow_id AND
+                                  valve_type.valve_type_by_socet = operations_qa_dependency.valve_type_by_socet AND
+                                  valve_bellow_type.valve_bellow_id = operations_qa_dependency.valve_bellow_id AND
+                                  valve_id_to_socet.valve_type_by_socet = valve_type.valve_type_by_socet AND
+                                  detail_to_hydro.hydro_id = hydro.hydro_id AND
+                                  detail_to_hydro.detail_id = detail.detail_id AND
+                                  detail_to_radiography.rad_id = radiography.rad_id AND
+                                  detail_to_radiography.detail_id = detail.detail_id AND
+                                  ferrite_phase_to_detail.fp_id = ferrite_phase.fp_id AND
+                                  valve.valve_id = ",valve_id," AND 
+                                  valve_qa_type.valve_qa_type_id = ",qa_type_id ,"AND 
+                                  detail.detail_id = ",detail_id ,"AND 
+                                  material_type_separate.material_type_separete_id =  ",material_sep_id ,"AND 
+                                  tempr.tempr_id = ",tempr_id ,"AND 
+                                  tempr_operation.tempr_operation_id = ",tempr_oper_id," AND 
+                                  list_of_operations.operation_id NOT BETWEEN 50 AND 103 AND
+                                  pressure.pressure_id =", pressure_id,";")
+    x <- dbGetQuery(con, select_operations)
+    Encoding(x$operation_name_4table) <- "UTF-8"
+    # Encoding(x$operation_name_particular) <- "UTF-8"
+    x <- x[order(x$operation_order),]
+    return(x)
 }
 
 
@@ -571,8 +576,8 @@ control_type_list <- get_control_type_list(con)
 # tempr_oper <- tempr_oper_list$tempr_oper_value_more_than_20[1]
 # pressure <- pressure_list$pressure_type[1]
 # #
-valve_name <- valve_list$valve_name[14]
-det2_list <- get_welding_and_overlay_detail_list(con, valve_name)
+# valve_name <- valve_list$valve_name[14]
+# det2_list <- get_welding_and_overlay_detail_list(con, valve_name)
 # detail_list <- get_detial_list(con, valve_name)
 # detail = detail_list$detail_name_rus[5]
 # material_list <- get_material_list(con,detail,valve_name)
@@ -707,7 +712,8 @@ ui <- dashboardPage(
                   ,
                   htmlOutput("qa_table"),
                   htmlOutput("text"),
-                  downloadButton('downloadData', 'Скачать в *.csv')
+                  downloadButton('downloadData', 'Скачать в *.csv'),
+                  downloadButton('downloadDataDocx','Скачать в *.docx')
                 )
               )
       ),
@@ -721,19 +727,9 @@ ui <- dashboardPage(
                     h2("Таблица ТБ2"),
                     verbatimTextOutput("valve_code_qa2"),
                     htmlOutput("qa_table2"),
-                    # tags$head(tags$style(type="text/css", ".myTableHeadrow {
-                    #                     filter:  progid:DXImageTransform.Microsoft.BasicImage(rotation=0.083);  /* IE6,IE7 */
-                    #                      -ms-filter: 'progid:DXImageTransform.Microsoft.BasicImage(rotation=0.083)'; /* IE8 */
-                    #                      -moz-transform: rotate(-90.0deg);  /* FF3.5+ */
-                    #                      -ms-transform: rotate(-90.0deg);  /* IE9+ */
-                    #                      -o-transform: rotate(-90.0deg);  /* Opera 10.5 */
-                    #                      -webkit-transform: rotate(-90.0deg);  /* Safari 3.1+, Chrome */
-                    #                      transform: rotate(-90.0deg);  /* Standard */
-                    #                     width: 100%; 
-                    #                     table-layout: fixed;
-                    #                      }}")),
                     htmlOutput("text_qa2"),
-                    downloadButton('download_qa2', 'Скачать в *.csv')
+                    downloadButton('download_qa2', 'Скачать в *.csv'),
+                    downloadButton('downloadDataDocx_qa2','Скачать в *.docx')
                   )
                   
                 )
@@ -768,8 +764,10 @@ server <- function(input, output, session) {
     for(i in 1 : length(detail_list$detail_name_rus)) {
       name <- paste0("material_", i)
       material <- input[[name]]
+      material_sep_id <- get_material_input_info(con, material, type = "material type separate")
       detail = detail_list$detail_name_rus[i]
-      x <- get_qa_operations_for_detail(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material)
+      x <- get_qa_operations_for_detail(con, valve_name, qa_type, tempr, tempr_oper, pressure, detail, material_sep_id)
+      
       if(is.data.frame(x)){
         drawing_number_of_detail$names[i] <-
           paste0(reactive_get_rv_drawing_number(), "-",get_detail_input_info(con, detail, type = "drawing name"))
@@ -869,6 +867,7 @@ server <- function(input, output, session) {
   
   reactive_get_definition_of_designations_for_qa2 <- reactive({
     qa2_frame <- reactiive_get_welding_and_overaly_table()
+    welding_frame <- qa2_frame[c(1,6)]
     qa2_frame <- qa2_frame[-c(1,2,3,4,5,6)]
     operation_name_4table <- unlist(qa2_frame)
     qa2_frame <- as.data.frame(operation_name_4table)
@@ -884,29 +883,47 @@ server <- function(input, output, session) {
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
                            list_of_operations.operation_name_4table !=  'NULL';")
+    welding_names <- dbGetQuery(con,  "SELECT DISTINCT detail_for_con.welding_type,
+                                        detail_for_con.welding_type_def
+                                       FROM detail_for_con")
+    Encoding(welding_names$welding_type_def) <- "UTF-8"
     Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
     Encoding(op_names$operation_name_4table) <- "UTF-8"
+    colnames(welding_frame)[colnames(welding_frame) == "Способ сварки/наплавки"] <- "welding_type"
+    t <- which(welding_frame$welding_type == "GTAW+SMAW")
     defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
     defenition_df <- na.omit(defenition_df)
     defenition_df <- defenition_df[order(defenition_df$operation_name_def_order),] 
     defenition_df <- defenition_df[-c(2,4)]
     defenition_df <- distinct(defenition_df)
     print_string <- ""
-    # lapply(1:length(defenition_df$operation_name_4table), function(i) {
     if(!is.na(defenition_df$operation_name_4definition[1])){
       for( i in 1:length(defenition_df$operation_name_4definition)) {
         print_string <- paste0(print_string, "<p>", defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; </p>")
       }
-      return(print_string)
     }else{
-      print_string <- paste0("<p>","","</p>")
-      return(" ")
+      
     }
+    
+    if(length(t) > 0){
+      definition_welding <- welding_names$welding_type_def[welding_names$welding_type == "GTAW+SMAW"]
+      print_string <- paste0(print_string,"<p>", definition_welding,"; </p>")
+    }else{
+      definition_welding <- inner_join(welding_names,welding_frame, by = "welding_type")
+      definition_welding <- definition_welding[2]
+      definition_welding <- distinct(definition_welding)
+      length(definition_welding$welding_type_def)
+      for(i in 1:length(definition_welding$welding_type_def)){
+        print_string <- paste0(print_string, "<p>", definition_welding$welding_type_def[i],"; </p>")
+      }
+    }
+    return(print_string)
   })
   
   
   reactive_get_definition_of_designations_for_qa2_file <- reactive({
     qa2_frame <- reactiive_get_welding_and_overaly_table()
+    welding_frame <- qa2_frame[c(1,6)]
     qa2_frame <- qa2_frame[-c(1,2,3,4,5,6)]
     operation_name_4table <- unlist(qa2_frame)
     qa2_frame <- as.data.frame(operation_name_4table)
@@ -914,29 +931,48 @@ server <- function(input, output, session) {
     qa2_frame <- qa2_frame %>% distinct(operation_name_4table)
     op_names <- dbGetQuery(con, "SELECT DISTINCT list_of_operations.operation_name_4table_definition,
                            list_of_operations.operation_name_4table,
-                           list_of_operations.operation_name_4definition
+                           list_of_operations.operation_name_4definition,
+                           list_of_operations.operation_name_def_order
                            FROM	list_of_operations
                            WHERE 	list_of_operations.operation_id  BETWEEN 50 AND 103 AND
                            list_of_operations.operation_name_4table != '+' AND
                            list_of_operations.operation_name_4table != '-' AND
                            list_of_operations.operation_name_4table != '+c' AND
                            list_of_operations.operation_name_4table !=  'NULL';")
+    welding_names <- dbGetQuery(con,  "SELECT DISTINCT detail_for_con.welding_type,
+                                detail_for_con.welding_type_def
+                                FROM detail_for_con")
+    Encoding(welding_names$welding_type_def) <- "UTF-8"
     Encoding(op_names$operation_name_4table_definition) <- "UTF-8"
     Encoding(op_names$operation_name_4table) <- "UTF-8"
+    colnames(welding_frame)[colnames(welding_frame) == "Способ сварки/наплавки"] <- "welding_type"
+    t <- which(welding_frame$welding_type == "GTAW+SMAW")
     defenition_df <- inner_join(op_names, qa2_frame, by = "operation_name_4table" )
     defenition_df <- na.omit(defenition_df)
-    defenition_df <- defenition_df[-2]
+    defenition_df <- defenition_df[order(defenition_df$operation_name_def_order),] 
+    defenition_df <- defenition_df[-c(2,4)]
     defenition_df <- distinct(defenition_df)
     print_string <- ""
     if(!is.na(defenition_df$operation_name_4definition[1])){
       for( i in 1:length(defenition_df$operation_name_4definition)) {
         print_string <- paste0(print_string, defenition_df$operation_name_4definition[i], " - ", defenition_df$operation_name_4table_definition[i], "; \n")
       }
-      return(print_string)
     }else{
-      print_string <- paste0("","","")
-      return(" ")
+      
     }
+    
+    if(length(t) > 0){
+      definition_welding <- welding_names$welding_type_def[welding_names$welding_type == "GTAW+SMAW"]
+      print_string <- paste0(print_string, definition_welding,"; \n")
+    }else{
+      definition_welding <- inner_join(welding_names,welding_frame, by = "welding_type")
+      definition_welding <- definition_welding[2]
+      definition_welding <- distinct(definition_welding)
+      for(i in 1:length(definition_welding$welding_type_def)){
+        print_string <- paste0(print_string,  definition_welding$welding_type_def[i],"; \n")
+      }
+    }
+    return(print_string)
   })
   
   
@@ -1252,6 +1288,59 @@ server <- function(input, output, session) {
     }
   )
   
+  output$downloadDataDocx <- downloadHandler(
+    filename = function() {
+      paste0('QA_table_', Sys.Date(), '.docx')
+    },
+    content = function(file) {
+      data <- reactive_get_oper_table()
+      cellprop <- cellProperties( text.direction = "btlr" )
+      data_header <- colnames(data)
+      datadata <- FlexTable(data, header.columns = FALSE) %>% 
+        addHeaderRow( value=data_header, cell.properties = cellprop )
+      header <- paste0(reactive_get_header_of_qa_table(),"\n")
+      bottom <- paste0(
+        "Обозначения:
+        РГК  - радиографический контроль;
+        УЗК  - ультразвуковой контроль;
+        МПД  - магнитопорошковый контроль;
+        +   - контроль производится;
+        -   - контроль не производится;
+        +c  - результаты испытаний подтверждаются сертификатом;",
+        "\n",
+        reactive_get_definition_of_designations_for_file()
+        )
+      doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
+      writeDoc(doc, file=file )
+    }
+  )
+  output$downloadDataDocx_qa2 <- downloadHandler(
+    filename = function() {
+      paste0('QA2_table_', Sys.Date(), '.docx')
+    },
+    content = function(file) {
+      data <- reactiive_get_welding_and_overaly_table()
+      header <- paste0(reactive_get_header_of_qa2_table(),"\n")
+      bottom <- paste0(
+        "Обозначения:
+ВК   - входной контроль;
+ВиК  - визуальный и измерительный контроль;
+РГК  - радиографический контроль;
+УЗК  - ультразвуковой контроль;
+МПД  - магнитопорошковый контроль;
+ +   - контроль производится;
+ +c  - результаты испытаний подтверждаются сертификатом;",
+        "\n",
+        reactive_get_definition_of_designations_for_qa2_file()
+        )
+      cellprop <- cellProperties( text.direction = "btlr" )
+      data_header <- colnames(data)
+      datadata <- FlexTable(data, header.columns = FALSE) %>% 
+        addHeaderRow( value=data_header, cell.properties = cellprop )
+      doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
+      writeDoc(doc, file=file )
+    }
+  )
   # observe({
   #   toggleState("main", condition = input$select_valve)
   #   
