@@ -658,7 +658,7 @@ ui <- dashboardPage(
       # First tab content
       tabItem(tabName = "init_data",
                 fluidPage(
-                  theme = shinytheme("paper"),
+                  theme  = "custom.css",
                   box(width = 8, title = h3("Тип клапана"), background = "light-blue",
                            selectInput("select_valve", label = NULL, 
                                        choices = valve_list$valve_name, 
@@ -716,7 +716,7 @@ ui <- dashboardPage(
       ),
       # Third tab content
       tabItem(tabName = "test",
-              navbarPage("Составление таблиц ТБ",
+              navbarPage("Составление таблиц ТБ",theme  = "custom.css",
                 tabPanel("ТБ 1",
                          box(width = 12,
                              uiOutput("qa1_header"),
@@ -1366,7 +1366,6 @@ server <- function(input, output, session) {
   #   
   #   # hide("main")
   # })
-  
 }
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny App ####
