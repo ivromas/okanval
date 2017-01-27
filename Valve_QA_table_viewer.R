@@ -631,7 +631,7 @@ ui <- dashboardPage(
   # Notification menu
   dropdownMenu(type = "messages",
                notificationItem(
-                 text = "IN DEVELOPMENT romas@okan.su",
+                 text = "mailto: romas@okan.su",
                  #    ИНФОРМАЦИЯ ПО ИСПОЛЬЗОВАНИЮ OKANVAL /n
                  #      * 1 вкладка - выбор клапана и исходных данных
                  #      * 2 вкладка - выбор материалов деталей клапана и наплавки
@@ -645,11 +645,11 @@ ui <- dashboardPage(
     sidebarMenu(
 
       menuItem("Исходные данные", tabName = "init_data", icon = icon("home"),
-               badgeLabel = "1", badgeColor = "green"),
+               badgeLabel = "1", badgeColor = "light-blue"),
       menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
-               badgeLabel = "2", badgeColor = "green"),
+               badgeLabel = "2", badgeColor = "light-blue"),
       menuItem("ТБ", tabName = "test", icon = icon("table"),
-               badgeLabel = "3", badgeColor = "green")
+               badgeLabel = "3", badgeColor = "light-blue")
     )
   ),
   ## Body content
@@ -657,88 +657,68 @@ ui <- dashboardPage(
     tabItems(
       # First tab content
       tabItem(tabName = "init_data",
-              wellPanel(
                 fluidPage(
-                  theme = shinytheme("yeti"),
-                  column(8,
-                         
-                         fluidPage(
-                           selectInput("select_valve", label = h3("Тип клапана"), 
+                  theme = shinytheme("paper"),
+                  box(width = 8, title = h3("Тип клапана"), background = "light-blue",
+                           selectInput("select_valve", label = NULL, 
                                        choices = valve_list$valve_name, 
                                        selected = 1,
-                                       width = "100%"),
-                           hr()
-                         )
-                  ),
-                  column(4,
+                                       width = "100%")
+                           ),
+                  box(width =4, background = "light-blue",
                          textInput("rv_drawing_number", "Введите обозначение чертежа деталей ",
                                    value = "RV-YYYYYY", width = "80%"),
                          h5("Обозначение чертежа деталей:"),
                          verbatimTextOutput("rv_draw_numb_disp")
                   ),
-                  column(4,
-                         selectInput("select_qa_type", label = h4("Класс безопасности"), 
+                  box(width = 12, background = "light-blue",
+                      column(4,
+                         selectInput("select_qa_type", label = h5("Класс безопасности"), 
                                      choices = qa_type_list$valve_qa_type_name, 
                                      selected = 1,
-                                     width = "30%")
-                  ),
+                                     width = "80%")),
                   column(4,
-                         selectInput("dn_value", label = h4("Значение DN клапана"),
+                         selectInput("dn_value", label = h5("Значение DN клапана"),
                                      choices = dn_value_list$dn_value,
                                      selected = 1,
-                                     width = "30%")
-                  ),
+                                     width = "80%")),
                   column(4,
-                         selectInput("control_type", label = h4("Управляющий орган"),
+                         selectInput("control_type", label = h5("Управляющий орган"),
                                      choices = control_type_list$control_type_def,
                                      selected = 1,
-                                     width = "60%")
-                  )
-                ),
-                fluidPage(
-                  column(4,fluidPage(
-                    selectInput("select_tempr", label = h4("Температура рабочей среды выше 100?"), 
+                                     width = "80%")),
+                  column(4,
+                    selectInput("select_tempr", label = h5("Т-ра рабочей среды выше 100?"), 
                                 choices = tempr_list$tempr_value_more_than_100, 
                                 selected = 1,
-                                width = "40%")
-                  )
-                  ),
-                  column(4,fluidPage(
-                    selectInput("select_tempr_oper", label = h4("Внешняя температура выше 20?"), 
+                                width = "80%")),
+                  column(4,
+                    selectInput("select_tempr_oper", label = h5("Внешняя Т-ра выше 20?"), 
                                 choices = tempr_oper_list$tempr_oper_value_more_than_20, 
                                 selected = 1,
-                                width = "40%")
-                  )
-                  ),
-                  column(4,fluidPage(
-                    htmlOutput("dynamic_select_pressure")
-                    )
+                                width = "100%")),
+                  column(4,
+                    htmlOutput("dynamic_select_pressure"))
                   )
                 )
-              )
+              
       ),
       # Second tab content
       tabItem(tabName = "det_n_mat",
-              wellPanel(
-                fluidPage(
-                  h2("Список деталей клапана"),
-                  h3("Выберите материалы для каждой детали"),
+              box(width = 12,title = h3("Список деталей клапана"), background = "light-blue",
+                  h4("Выберите материалы для каждой детали"),
                   htmlOutput("details_and_materials")
-                )
               ),
-              wellPanel(
-                fluidPage(
-                  h3("Выберите материал наплавки для деталей(при наличии)"),
+              box(width = 12, background = "light-blue",
+                  h4("Выберите материал наплавки для деталей(при наличии)"),
                   htmlOutput("details_and_overlays")
-                )
               )
       ),
       # Third tab content
       tabItem(tabName = "test",
               navbarPage("Составление таблиц ТБ",
                 tabPanel("ТБ 1",
-                         wellPanel(
-                           fluidPage(
+                         box(width = 12,
                              uiOutput("qa1_header"),
                              tags$head(
                                tags$style("#qa1_header{font-size: 10px;
@@ -749,12 +729,10 @@ ui <- dashboardPage(
                              htmlOutput("text"),
                              downloadButton('downloadData', 'Скачать в *.csv'),
                              downloadButton('downloadDataDocx','Скачать в *.docx')
-                           )
                          )
                 ),
                 tabPanel("ТБ 2",
-                         wellPanel(
-                           fluidPage(
+                         box(width = 12,
                              useShinyjs(),
                              div(
                                id = "main",
@@ -762,14 +740,14 @@ ui <- dashboardPage(
                                tags$head(
                                  tags$style("#qa2_header{font-size: 10px;
                                                   }"
-                               )
+                                )
                                ),
                                htmlOutput("qa_table2"),
                                htmlOutput("text_qa2"),
                                downloadButton('download_qa2', 'Скачать в *.csv'),
                                downloadButton('downloadDataDocx_qa2','Скачать в *.docx')
                               )
-                             )
+
                            )
                          )
                 )
@@ -1157,11 +1135,13 @@ server <- function(input, output, session) {
   })
   
   output$qa1_header <- renderUI({
-      headerPanel(h3(reactive_get_header_of_qa_table()))
+    str <- reactive_get_header_of_qa_table()
+    Encoding(str) <- "UTF-8"
+      headerPanel(h4(str))
   })
   
   output$qa2_header <- renderUI({
-    headerPanel(h3( reactive_get_header_of_qa2_table()))
+    headerPanel(h4( reactive_get_header_of_qa2_table(), style = "font-family: 'arial',"))
   })
   
 
@@ -1169,15 +1149,15 @@ server <- function(input, output, session) {
     renderUI({
       current_qa_type <- input$select_qa_type
       if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
-        selectInput("select_pressure", label = h4("Класс давления по ANSI"),
+        selectInput("select_pressure", label = h5("Класс давления по ANSI"),
                     choices = pressure_list$pressure_type[2],
                     selected = 1,
-                    width = "40%")
+                    width = "80%")
       }else {
-        selectInput("select_pressure", label = h4("Класс давления по ANSI"),
+        selectInput("select_pressure", label = h5("Класс давления по ANSI"),
                     choices = pressure_list$pressure_type,
                     selected = 1,
-                    width = "40%")
+                    width = "80%")
       }
       
     })
