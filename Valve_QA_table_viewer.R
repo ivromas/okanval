@@ -45,6 +45,7 @@ library(reshape)
 library(tidyr)
 library(shinythemes)
 library(shinyjs)
+# Sys.setenv(JAVA_HOME="C:\\Program Files\\Java\\jdk1.8.0_121\\jre")
 library(ReporteRs)
 
 
@@ -1040,7 +1041,7 @@ server <- function(input, output, session) {
     code <- reactive_get_valve_code()
     
     x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, input$select_valve, type = "type_def")
-                , ", \nномер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
+                , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
     return(x)
   })
   
@@ -1049,7 +1050,7 @@ server <- function(input, output, session) {
     code <- reactive_get_valve_code()
     
     x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, input$select_valve, type = "type_def")
-                , ", \nномер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
+                , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
     return(x)
   })
   
@@ -1340,13 +1341,13 @@ server <- function(input, output, session) {
       header <- paste0(reactive_get_header_of_qa_table(),"\n")
       bottom <- paste0(
         "Обозначения:
-        РГК  - радиографический контроль;
-        УЗК  - ультразвуковой контроль;
-        МПД  - магнитопорошковый контроль;
-        +   - контроль производится;
-        -   - контроль не производится;
-        +c  - результаты испытаний подтверждаются сертификатом;",
-        "\n",
+РГК  - радиографический контроль;
+УЗК  - ультразвуковой контроль;
+МПД  - магнитопорошковый контроль;
++   - контроль производится;
+-   - контроль не производится;
++c  - результаты испытаний подтверждаются сертификатом;",
+"\n",
         reactive_get_definition_of_designations_for_file()
         )
       doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
@@ -1375,7 +1376,7 @@ server <- function(input, output, session) {
       cellprop <- cellProperties( text.direction = "btlr" )
       data_header <- colnames(data)
       datadata <- FlexTable(data, header.columns = FALSE) %>% 
-        addHeaderRow( value=data_header, cell.properties = cellprop )
+        addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
       doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
       writeDoc(doc, file=file )
     }
