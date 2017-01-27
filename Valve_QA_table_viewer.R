@@ -1,3 +1,37 @@
+# 
+# ************************************************************************
+# Based on <http://opensource.org/licenses/MIT>
+#   
+# YEAR: 2017
+# COPYRIGHT HOLDER: Ivan Romas
+# 
+# License: MIT
+# 
+# ************************************************************************
+#   
+#   Copyright (c) <YEAR>, <COPYRIGHT HOLDER>
+#   
+#   Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+#                                                             "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#   в
+#   The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# 
+# ************************************************************************
+
 # coding UTF-8
 
 
@@ -596,7 +630,7 @@ ui <- dashboardPage(
   # Notification menu
   dropdownMenu(type = "messages",
                notificationItem(
-                 text = "IN DEVELOPMENT",
+                 text = "IN DEVELOPMENT romas@okan.su",
                  #    ИНФОРМАЦИЯ ПО ИСПОЛЬЗОВАНИЮ OKANVAL /n
                  #      * 1 вкладка - выбор клапана и исходных данных
                  #      * 2 вкладка - выбор материалов деталей клапана и наплавки
@@ -613,9 +647,7 @@ ui <- dashboardPage(
                badgeLabel = "1", badgeColor = "green"),
       menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
                badgeLabel = "2", badgeColor = "green"),
-      menuItem("ТБ 1", tabName = "qa_op_table", icon = icon("table"),
-               badgeLabel = "3", badgeColor = "green"),
-      menuItem("ТБ 2", tabName = "qa_op_table2", icon = icon("table"),
+      menuItem("ТБ", tabName = "test", icon = icon("table"),
                badgeLabel = "3", badgeColor = "green")
     )
   ),
@@ -638,10 +670,8 @@ ui <- dashboardPage(
                          )
                   ),
                   column(4,
-                         
                          textInput("rv_drawing_number", "Введите обозначение чертежа деталей ",
                                    value = "RV-YYYYYY", width = "80%"),
-                         # verbatimTextOutput("rv_draw_numb_disp")
                          h5("Обозначение чертежа деталей:"),
                          verbatimTextOutput("rv_draw_numb_disp")
                   ),
@@ -703,41 +733,49 @@ ui <- dashboardPage(
               )
       ),
       # Third tab content
-      tabItem(tabName = "qa_op_table",
-              wellPanel(
-                fluidPage(
-                  h2("Таблица ТБ"),
-                  # verbatimTextOutput("info_text"),
-                  verbatimTextOutput("valve_code")
-                  ,
-                  htmlOutput("qa_table"),
-                  htmlOutput("text"),
-                  downloadButton('downloadData', 'Скачать в *.csv'),
-                  downloadButton('downloadDataDocx','Скачать в *.docx')
-                )
-              )
-      ),
-      # Fourth tab content
-      tabItem(tabName = "qa_op_table2",
-              wellPanel(
-                fluidPage(
-                  useShinyjs(),
-                  div(
-                    id = "main",
-                    h2("Таблица ТБ2"),
-                    verbatimTextOutput("valve_code_qa2"),
-                    htmlOutput("qa_table2"),
-                    htmlOutput("text_qa2"),
-                    downloadButton('download_qa2', 'Скачать в *.csv'),
-                    downloadButton('downloadDataDocx_qa2','Скачать в *.docx')
-                  )
-                  
+      tabItem(tabName = "test",
+              navbarPage("Составление таблиц ТБ",
+                tabPanel("ТБ 1",
+                         wellPanel(
+                           fluidPage(
+                             uiOutput("qa1_header"),
+                             tags$head(
+                               tags$style("#qa1_header{font-size: 10px;
+                                                  }"
+                                                  )
+                                       ),
+                             htmlOutput("qa_table"),
+                             htmlOutput("text"),
+                             downloadButton('downloadData', 'Скачать в *.csv'),
+                             downloadButton('downloadDataDocx','Скачать в *.docx')
+                           )
+                         )
+                ),
+                tabPanel("ТБ 2",
+                         wellPanel(
+                           fluidPage(
+                             useShinyjs(),
+                             div(
+                               id = "main",
+                               uiOutput("qa2_header"),
+                               tags$head(
+                                 tags$style("#qa2_header{font-size: 10px;
+                                                  }"
+                               )
+                               ),
+                               htmlOutput("qa_table2"),
+                               htmlOutput("text_qa2"),
+                               downloadButton('download_qa2', 'Скачать в *.csv'),
+                               downloadButton('downloadDataDocx_qa2','Скачать в *.docx')
+                              )
+                             )
+                           )
+                         )
                 )
               )
       )
     )
   )
-)
 
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny Server ####
@@ -1117,17 +1155,15 @@ server <- function(input, output, session) {
     }
   })
   
+  output$qa1_header <- renderUI({
+      headerPanel(h3(reactive_get_header_of_qa_table()))
+  })
   
-  output$valve_code <- renderText({
-    
-    reactive_get_header_of_qa_table()
-    # str(reactive_get_header_of_qa_table())
-  },quoted = FALSE)
- 
-  output$valve_code_qa2<- renderText({
-      reactive_get_header_of_qa2_table()
-    },quoted = FALSE)
+  output$qa2_header <- renderUI({
+    headerPanel(h3( reactive_get_header_of_qa2_table()))
+  })
   
+
   output$dynamic_select_pressure <-
     renderUI({
       current_qa_type <- input$select_qa_type
@@ -1294,10 +1330,13 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       data <- reactive_get_oper_table()
+      parprop <- parProperties(padding = 2)
       cellprop <- cellProperties( text.direction = "btlr" )
       data_header <- colnames(data)
       datadata <- FlexTable(data, header.columns = FALSE) %>% 
-        addHeaderRow( value=data_header, cell.properties = cellprop )
+        addHeaderRow( value = c("", "","","Наименование операции"), colspan = c( 1,1,1, 24),
+                      par.properties = parprop, text.properties = textNormal() ) %>% 
+        addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
       header <- paste0(reactive_get_header_of_qa_table(),"\n")
       bottom <- paste0(
         "Обозначения:
