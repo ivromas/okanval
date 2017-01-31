@@ -386,14 +386,14 @@ get_overlay_list <- function(con) {
 
 get_distinct_names_of_qa_operations <- function(con, type = NaN){
   if(type == "QA 1"){
-    x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
+    x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular, operation_code_char 
                         FROM list_of_operations
                         WHERE list_of_operations.operation_id NOT BETWEEN 46 AND 103")
     Encoding(x$operation_name_particular) <- "UTF-8"
     x <- x[order(x$operation_order),]
     return(x)
   } else if(type == "QA 2"){
-    x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular 
+    x<- dbGetQuery(con, "SELECT DISTINCT operation_order , operation_name_particular, operation_code_char  
                         FROM list_of_operations
                    WHERE list_of_operations.operation_id BETWEEN 50 AND 103")
     Encoding(x$operation_name_particular) <- "UTF-8"
@@ -765,8 +765,7 @@ server <- function(input, output, session) {
   
   reactive_get_oper_table <- reactive({
     
-    frame_with_names_of_operations <- get_distinct_names_of_qa_operations(con,type = "QA 1")
-    dataframe_to_be_retuned <- frame_with_names_of_operations
+    dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 1")
     qa_type <- input$select_qa_type
     tempr <- input$select_tempr
     tempr_oper <- input$select_tempr_oper
@@ -800,11 +799,11 @@ server <- function(input, output, session) {
     }
     
     # transponse output data
-    dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned)
-    dataframe_to_be_retuned.t <- as.data.frame(dataframe_to_be_retuned.t )
+    dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned) %>% as.data.frame()
     colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
-    dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(1, 2), ]
+    dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(2), ]
     dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Detail/Material")
+    dataframe_to_be_retuned.t$`Detail/Material`[c(1,2)] <- " / "
     # split detail and material to seperate columns
     x<-strsplit(dataframe_to_be_retuned.t$`Detail/Material`,"/")
     x<- as.data.frame(x)
@@ -813,10 +812,15 @@ server <- function(input, output, session) {
     dataframe_to_be_retuned.t$`Деталь` <- x$V1
     dataframe_to_be_retuned.t$`Материал` <- x$V2
     dataframe_to_be_retuned.t$`Detail/Material` <- NULL
+    
+    y <- data.frame(" ", " ")
+    colnames(y) <- colnames(drawing_number_of_detail)
+    drawing_number_of_detail <- rbind(y,drawing_number_of_detail)
+    drawing_number_of_detail <- rbind(y,drawing_number_of_detail)
     dataframe_to_be_retuned.t$`Обозначение чертежа детали` <- drawing_number_of_detail$names
-    # re-ordering indexes
     dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(25,26,27,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)]
-    # return(dataframe_to_be_retuned)
+    dataframe_to_be_retuned.t[] <- lapply(dataframe_to_be_retuned.t, as.character)
+    dataframe_to_be_retuned.t[1,] <- c(1:ncol(dataframe_to_be_retuned.t))
     return(dataframe_to_be_retuned.t)
     
   })
@@ -884,6 +888,7 @@ server <- function(input, output, session) {
   
   reactive_get_definition_of_designations_for_qa2 <- reactive({
     qa2_frame <- reactiive_get_welding_and_overaly_table()
+    qa2_frame <- qa2_frame[-c(1,2),]
     welding_frame <- qa2_frame[c(1,6)]
     qa2_frame <- qa2_frame[-c(1,2,3,4,5,6)]
     operation_name_4table <- unlist(qa2_frame)
@@ -1115,20 +1120,32 @@ server <- function(input, output, session) {
         colnames(x)[colnames(x) == "operation_name_4table"] <- detail_4con_name_current
         dataframe_to_be_retuned <- inner_join(dataframe_to_be_retuned, x, by = "operation_order")
       }
-      dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned)
-      dataframe_to_be_retuned.t <- as.data.frame(dataframe_to_be_retuned.t )
-      colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
-      dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c(1, 2), ]
-      dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Деталь")
       
+      dataframe_to_be_retuned.t <- t(dataframe_to_be_retuned) %>% as.data.frame()
+      colnames(dataframe_to_be_retuned.t) <- as.character(unlist(dataframe_to_be_retuned.t["operation_name_particular", ]))
+      dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[- c( 2), ]
+      dataframe_to_be_retuned.t <- add_rownames(dataframe_to_be_retuned.t, "Деталь")
+      dataframe_to_be_retuned.t$Деталь[c(1)] <- "1"
+      dataframe_to_be_retuned.t$Деталь[c(2)] <- "2"
       names(details_for_welding_list)[names(details_for_welding_list)=="detail_4con_name"] <- "Деталь"
       names(details_for_welding_list)[names(details_for_welding_list)=="number_of_welds"] <- "Кол-во сварных швов"
       names(details_for_welding_list)[names(details_for_welding_list)=="welding_type"] <- "Способ сварки/наплавки"
       details_for_welding_list <- details_for_welding_list[-c(2,3,4,8)]
+      y <- data.frame("2", " "," "," "," "," ")
+      colnames(y) <- colnames(details_for_welding_list)
+      details_for_welding_list <- rbind(y,details_for_welding_list)
+      y <- data.frame("1", " "," "," "," "," ")
+      colnames(y) <- colnames(details_for_welding_list)
+      details_for_welding_list <- rbind(y,details_for_welding_list)
+      details_for_welding_list[] <- lapply(details_for_welding_list, as.character)
       
       dataframe_to_be_retuned.t <- inner_join(dataframe_to_be_retuned.t, details_for_welding_list, 
                                               by = "Деталь")
       dataframe_to_be_retuned.t <- dataframe_to_be_retuned.t[, c(1,24,25,22,23,21,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)]
+      dataframe_to_be_retuned.t$Деталь[c(1,2)] <- " "
+      dataframe_to_be_retuned.t[] <- lapply(dataframe_to_be_retuned.t, as.character)
+      dataframe_to_be_retuned.t[1,] <- c(1:ncol(dataframe_to_be_retuned.t))
+      
       return(dataframe_to_be_retuned.t)
       
     }
@@ -1202,19 +1219,9 @@ server <- function(input, output, session) {
   
   output$qa_table <-
     renderGvis({
-      gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 2, page = 'enable', headerRow = 
-                                                          "tr.rotate {
-                                                        white-space: nowrap;
-                                                        -webkit-transform-origin: 65px 60px;
-                                                        -moz-transform-origin: 65px 60px;
-                                                        -o-transform-origin: 65px 60px;
-                                                        -ms-transform-origin: 65px 60px;
-                                                        transform-origin: 65px 60px;
-    }
-                                                        
-                                                        tr.rights {
-                                                        text-align: center;
-                                                        }" ))
+      x<-reactive_get_oper_table()
+      # renderTable(reactive_get_oper_table())
+      gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 2, page = 'enable'))
     })
   
   output$qa_table2 <-
@@ -1328,7 +1335,10 @@ server <- function(input, output, session) {
 -   - контроль не производится;
 +c  - результаты испытаний подтверждаются сертификатом;",
 "\n",
-        reactive_get_definition_of_designations_for_file()
+        reactive_get_definition_of_designations_for_file(),
+"
+
+Настоящую таблицу рассматривать совместно с ОСТ 108.004.10 и комплектом конструкторской документации."
         )
       doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
       writeDoc(doc, file=file )
@@ -1351,11 +1361,17 @@ server <- function(input, output, session) {
  +   - контроль производится;
  +c  - результаты испытаний подтверждаются сертификатом;",
         "\n",
-        reactive_get_definition_of_designations_for_qa2_file()
+        reactive_get_definition_of_designations_for_qa2_file(),
+"
+
+Настоящую таблицу рассматривать совместно с ОСТ 108.004.10 и комплектом конструкторской документации."
         )
       cellprop <- cellProperties( text.direction = "btlr" )
+      parprop <- parProperties(padding = 2)
       data_header <- colnames(data)
       datadata <- FlexTable(data, header.columns = FALSE) %>% 
+        addHeaderRow( value = c("", "","","","","","Наименование операции"), colspan = c( 1,1,1,1,1,1, 19),
+                      par.properties = parprop, text.properties = textNormal() ) %>% 
         addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
       doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
       writeDoc(doc, file=file )
