@@ -1227,27 +1227,42 @@ server <- function(input, output, session) {
     }
     })
   
-  observe({
-    
-  })
   
   output$rv_draw_numb_disp <-
     renderText({paste0(input$rv_drawing_number,"-XX")})
   
   output$qa_table <-
     renderGvis({
+      # TODO add normal progressbar
+      # Create a Progress object
+      progress <- shiny::Progress$new()
+      # Make sure it closes when we exit this reactive, even if there's an error
+      on.exit(progress$close())
+      progress$set(message = "Создание новой таблицы ТБ", value = 0.1)
+      Sys.sleep(0.8)
+      progress$set(message = "Создание новой таблицы ТБ2", value = 0.4)
       x <- reactive_get_oper_table()
       # renderTable(reactive_get_oper_table())
       gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 2, page = 'enable'))
+      # progress$inc(1)
     })
   
   output$qa_table2 <-
     renderGvis({
+      # TODO add normal progressbar
+      # Create a Progress object
+      progress <- shiny::Progress$new()
+      # Make sure it closes when we exit this reactive, even if there's an error
+      on.exit(progress$close())
+      progress$set(message = "Создание новой таблицы ТБ2", value = 0.3)
+      Sys.sleep(0.8)
+      progress$set(message = "Создание новой таблицы ТБ2", value = 0.5)
       if(input$select_valve != "Кран шаровый"){
         gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 2, allowHtml = TRUE, showRowNumber = FALSE
                                                                           # cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
         ))
       }
+        # progress$inc(1)
     })
   
   output$text <-
