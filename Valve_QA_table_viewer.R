@@ -511,7 +511,7 @@ get_welding_and_overlay_detail_list <- function(con, valve_name){
                    valve.valve_name = '", valve_name, "';
                    ")
   x <- dbGetQuery(con, select_welding_det)
-  if(nrow(x) !=0)
+  if (nrow(x) != 0)
   {
     Encoding(x$detail_4con_name) <- "UTF-8"
     Encoding(x$detail_name_rus) <- "UTF-8"
@@ -524,7 +524,7 @@ get_welding_and_overlay_detail_list <- function(con, valve_name){
 
 
 get_conncetion_type_info <- function(con, detail_4con_name, type = NaN){
-  if(type == "id"){
+  if (type == "id") {
     select <- paste0("SELECT 
                               connection_type.con_type_id
                               FROM 
@@ -648,7 +648,7 @@ ui <- dashboardPage(
                badgeLabel = "1", badgeColor = "light-blue"),
       menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
                badgeLabel = "2", badgeColor = "light-blue"),
-      menuItem("ТБ", tabName = "test", icon = icon("table"),
+      menuItem("ТБ", tabName = "qa_tables", icon = icon("table"),
                badgeLabel = "3", badgeColor = "light-blue")
     )
   ),
@@ -665,7 +665,7 @@ ui <- dashboardPage(
                                        selected = 1,
                                        width = "100%")
                            ),
-                  box(width =4, background = "light-blue",
+                  box(width = 4, background = "light-blue",
                          textInput("rv_drawing_number", "Введите обозначение чертежа деталей ",
                                    value = "RV-YYYYYY", width = "80%"),
                          h5("Обозначение чертежа деталей:"),
@@ -715,7 +715,7 @@ ui <- dashboardPage(
               )
       ),
       # Third tab content
-      tabItem(tabName = "test",
+      tabItem(tabName = "qa_tables",
               navbarPage("Составление таблиц ТБ",theme  = "custom.css",
                 tabPanel("ТБ 1",
                          box(width = 12,
@@ -737,11 +737,11 @@ ui <- dashboardPage(
                              div(
                                id = "main",
                                uiOutput("qa2_header"),
-                               tags$head(
-                                 tags$style("#qa2_header{font-size: 10px;
-                                                  }"
-                                )
-                               ),
+                               # tags$head(
+                               #   tags$style("#qa2_header{font-size: 10px;
+                               #                    }"
+                               #  )
+                               # ),
                                htmlOutput("qa_table2"),
                                htmlOutput("text_qa2"),
                                downloadButton('download_qa2', 'Скачать в *.csv'),
@@ -1158,7 +1158,11 @@ server <- function(input, output, session) {
   })
   
   output$qa2_header <- renderUI({
-    headerPanel(h4( reactive_get_header_of_qa2_table(), style = "font-family: 'arial',"))
+    if ( input$select_valve != "Кран шаровый" ) {
+      headerPanel(h4( reactive_get_header_of_qa2_table(), style = "font-family: 'arial',"))
+    }else{
+      headerPanel(h4("ТБ2 не требуется"))
+    }
   })
   
 
@@ -1214,21 +1218,36 @@ server <- function(input, output, session) {
       }
     })
   
+  observe({if(input$select_valve != "Кран шаровый") {
+    shinyjs::enable( "downloadDataDocx_qa2")
+    shinyjs::enable( "download_qa2")
+  } else{
+    shinyjs::disable( "downloadDataDocx_qa2")
+    shinyjs::disable( "download_qa2")
+    }
+    })
+  
+  observe({
+    
+  })
+  
   output$rv_draw_numb_disp <-
     renderText({paste0(input$rv_drawing_number,"-XX")})
   
   output$qa_table <-
     renderGvis({
-      x<-reactive_get_oper_table()
+      x <- reactive_get_oper_table()
       # renderTable(reactive_get_oper_table())
       gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 2, page = 'enable'))
     })
   
   output$qa_table2 <-
     renderGvis({
-      gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 2, allowHtml = TRUE, showRowNumber = FALSE
-                                                                        # cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
-      ))
+      if(input$select_valve != "Кран шаровый"){
+        gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 2, allowHtml = TRUE, showRowNumber = FALSE
+                                                                          # cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
+        ))
+      }
     })
   
   output$text <-
@@ -1248,6 +1267,7 @@ server <- function(input, output, session) {
   
   output$text_qa2 <-
     renderText({
+      if (input$select_valve != "Кран шаровый") {
       HTML(paste0(
         "<p><b>Обозначения:</b></p>
         <p>ВК   - входной контроль;</p>
@@ -1261,7 +1281,7 @@ server <- function(input, output, session) {
         reactive_get_definition_of_designations_for_qa2()),
         "<p> </p>"
       )
-      
+      }
     })
 
   output$download_qa2 <- downloadHandler(
