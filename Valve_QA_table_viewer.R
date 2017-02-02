@@ -705,13 +705,15 @@ ui <- dashboardPage(
       ),
       # Second tab content
       tabItem(tabName = "det_n_mat",
-              box(width = 12,title = h3("Список деталей клапана"), background = "light-blue",
-                  h4("Выберите материалы для каждой детали"),
-                  htmlOutput("details_and_materials")
-              ),
-              box(width = 12, background = "light-blue",
-                  h4("Выберите материал наплавки для деталей(при наличии)"),
-                  htmlOutput("details_and_overlays")
+              fluidPage(
+                box(width = 12,title = h3("Список деталей клапана"), background = "light-blue",
+                    h4("Выберите материалы для каждой детали"),
+                    htmlOutput("details_and_materials")
+                ),
+                box(width = 12, background = "light-blue",
+                    h4("Выберите материал наплавки для деталей(при наличии)"),
+                    htmlOutput("details_and_overlays")
+                )
               )
       ),
       # Third tab content
@@ -1153,13 +1155,19 @@ server <- function(input, output, session) {
   
   output$qa1_header <- renderUI({
     str <- reactive_get_header_of_qa_table()
+    print(str)
     Encoding(str) <- "UTF-8"
-      headerPanel(h4(str))
+    headerPanel(tags$div(
+      HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+    ))
   })
   
   output$qa2_header <- renderUI({
     if ( input$select_valve != "Кран шаровый" ) {
-      headerPanel(h4( reactive_get_header_of_qa2_table(), style = "font-family: 'arial',"))
+      str <- reactive_get_header_of_qa2_table()
+      headerPanel(tags$div(
+        HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+      ))
     }else{
       headerPanel(h4("ТБ2 не требуется"))
     }
@@ -1240,7 +1248,7 @@ server <- function(input, output, session) {
       on.exit(progress$close())
       progress$set(message = "Создание новой таблицы ТБ", value = 0.1)
       Sys.sleep(0.8)
-      progress$set(message = "Создание новой таблицы ТБ2", value = 0.4)
+      progress$set(message = "Создание новой таблицы ТБ", value = 0.4)
       x <- reactive_get_oper_table()
       # renderTable(reactive_get_oper_table())
       gvisTable(reactive_get_oper_table(), options=list(frozenColumns = 2, page = 'enable'))
