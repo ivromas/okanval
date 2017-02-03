@@ -216,7 +216,6 @@ server <- function(input, output, session) {
       }
     })
   
-
   con <- okan_db_connect()
   
   
@@ -889,6 +888,4 @@ options(shiny.port = 6545)
 options(shiny.host = "192.168.1.59")
 # 
 shinyApp(ui, server)
-
-
 
