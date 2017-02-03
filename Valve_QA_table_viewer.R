@@ -202,13 +202,9 @@ ui <- dashboardPage(
 ### Shiny Server ####
 #_________________________________________________________________________________________________________________________________________________
 server <- function(input, output, session) {
-  
 
   source(login_folder,  local = TRUE)
-  # #### Log in module ###
-  
-  
-  
+
   observe({toggle("main_menu")})
   
     observe({
