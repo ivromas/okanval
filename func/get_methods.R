@@ -60,6 +60,22 @@ okan_db_disconnect <- function(con){
 }
 
 
+get_user_info <- function(con, type = NULL, user_name = NULL, user_password = NULL) {
+  if (type == "all") {
+        x <- dbGetQuery(con,"SELECT user_id, user_name, user_password
+                    FROM public.user_okan;")
+    Encoding(x$user_name) <- "UTF-8"
+    Encoding(x$user_password) <- "UTF-8"
+    return(x)
+  }else if (type == "check") {
+    str <- paste0("SELECT user_id FROM user_okan WHERE user_name ='"
+                  ,user_name,"'AND user_password ='",user_password, "';")
+    x <- dbGetQuery(con,str)
+    return(x)
+  }
+
+}
+
 get_dn_list <- function(con){
   x <- dbGetQuery(con,"SELECT dn_value FROM dn")
   return(x)
@@ -71,6 +87,7 @@ get_control_type_list <- function(con){
   Encoding(x$control_type_def) <- "UTF-8"
   return(x)
 }
+
 
 
 get_control_type_info <- function(con, ct_name, type = NaN){
@@ -578,6 +595,10 @@ get_qa2_operations_for_detail <- function(con, qa_type_name, tempr_name, connect
   }
 
 con <- okan_db_connect()
+
+
+PASSWORD <- get_user_info(con,type="all")
+Logged = FALSE;
 
 valve_list <- get_valve_list(con)
 qa_type_list <- get_qa_type_list(con)

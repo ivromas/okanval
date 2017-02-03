@@ -47,8 +47,7 @@ library(shinythemes)
 library(shinyjs)
 # Sys.setenv(JAVA_HOME="C:\\Program Files\\Java\\jdk1.8.0_121\\jre")
 library(ReporteRs)
-library(googleAuthR)
-options("googleAuthR.scopes.selected" = c("https://www.googleapis.com/auth/urlshortener"))
+
 
 rm(list = ls())
 
@@ -56,45 +55,61 @@ current_folder <- "c:/_IR_F/okanval/"
 # current_folder <- "C:/OkanVal/okanval_current_script"
 func_folder <- paste0(current_folder,file.path("func", "get_methods.R"))
 source(func_folder)
+login_folder <- paste0(current_folder,"server/Login.R")
+
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny UI ####
 ### 
 #_________________________________________________________________________________________________________________________________________________
 ui <- dashboardPage(
-  
   dashboardHeader(title = "OKANVAL web-UI demo",
-  # Notification menu
-  dropdownMenu(type = "messages",
-               notificationItem(
-                 text = "mailto: romas@okan.su",
-                 #    ИНФОРМАЦИЯ ПО ИСПОЛЬЗОВАНИЮ OKANVAL /n
-                 #      * 1 вкладка - выбор клапана и исходных данных
-                 #      * 2 вкладка - выбор материалов деталей клапана и наплавки
-                 # ОБРАТИТЕ ВНИМАНиЕ, ЧТО ПОСЛЕ ВЫБОРА КЛАПАНА ОБЯЗАТЕЛЬНО НУЖНО ЗАЙТИ ВО ВТОРУЮ ВКЛАДКУ
-                 #      * 3 вкладка - ТБ 1
-                 #      * 4 вкладка - ТЮ 2",
-                 icon("info-circle")
-               ))),
+    # Notification menu
+    dropdownMenu(type = "messages",
+                 messageItem("OKAN Team", "mailto:romas@kan.su", icon =  icon("info-circle"), time = NULL,
+                                               href = NULL)
+                 # ,
+                 # notificationItem(
+                 #   text = "mailto: romas@okan.su",
+                 #   icon("info-circle")
+                 # )
+                 )),
   ## Sidebar content
   dashboardSidebar(
-    sidebarMenu(
-
-      menuItem("Исходные данные", tabName = "init_data", icon = icon("home"),
-               badgeLabel = "1", badgeColor = "light-blue"),
-      menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
-               badgeLabel = "2", badgeColor = "light-blue"),
-      menuItem("ТБ", tabName = "qa_tables", icon = icon("table"),
-               badgeLabel = "3", badgeColor = "light-blue")
-    )
-  ),
+    sidebarMenu(id = "login_menu",
+      # div(id="lala1",
+      menuItem("Login", tabName = "login", icon = icon("glyphicon glyphicon-log-in", lib = "glyphicon"),
+               badgeColor = "light-blue")
+      ),
+    sidebarMenu( id = "main_menu",
+          menuItem("Исходные данные", tabName = "init_data", icon = icon("home"),
+                   badgeLabel = "1", badgeColor = "light-blue"),
+          menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
+                   badgeLabel = "2", badgeColor = "light-blue"),
+          menuItem("ТБ", tabName = "qa_tables", icon = icon("table"),
+                   badgeLabel = "3", badgeColor = "light-blue"),
+          useShinyjs()
+      )
+    ),
   ## Body content
   dashboardBody(
     tabItems(
+      tabItem(tabName = "login",
+              fluidPage(
+                sidebarPanel(),
+                mainPanel(
+                ## Login module;
+                box(width = 6,
+                    title = h3("Please Log In"),
+                    status="danger",
+                    solidHeader = TRUE,
+                    uiOutput("uiLogin"),
+                    textOutput("pass")
+                ))
+              )),
       # First tab content
       tabItem(tabName = "init_data",
                 fluidPage(
                   theme  = "custom.css",
-                  googleAuthUI("loginButton"),
                   box(width = 8, title = h3("Тип клапана"), background = "light-blue",
                            selectInput("select_valve", label = NULL, 
                                        choices = valve_list$valve_name, 
@@ -124,7 +139,7 @@ ui <- dashboardPage(
                                      selected = 1,
                                      width = "80%")),
                   column(4,
-                    selectInput("select_tempr", label = h5("Т-ра рабочей среды выше 100?"), 
+                    selectInput("select_tempr", label = h5("Т-ра окружающей среды во время эксплуатации выше 0?"), 
                                 choices = tempr_list$tempr_value_more_than_100, 
                                 selected = 1,
                                 width = "80%")),
@@ -158,11 +173,6 @@ ui <- dashboardPage(
                 tabPanel("ТБ 1",
                          box(width = 12,
                              uiOutput("qa1_header"),
-                             tags$head(
-                               tags$style("#qa1_header{font-size: 10px;
-                                                  }"
-                                                  )
-                                       ),
                              htmlOutput("qa_table"),
                              htmlOutput("text"),
                              downloadButton('downloadData', 'Скачать в *.csv'),
@@ -175,11 +185,6 @@ ui <- dashboardPage(
                              div(
                                id = "main",
                                uiOutput("qa2_header"),
-                               # tags$head(
-                               #   tags$style("#qa2_header{font-size: 10px;
-                               #                    }"
-                               #  )
-                               # ),
                                htmlOutput("qa_table2"),
                                htmlOutput("text_qa2"),
                                downloadButton('download_qa2', 'Скачать в *.csv'),
@@ -199,8 +204,20 @@ ui <- dashboardPage(
 #_________________________________________________________________________________________________________________________________________________
 server <- function(input, output, session) {
   
-  access_token <- callModule(googleAuth, "loginButton", approval_prompt = "force")
+  # Define server logic required to summarize and view the selected dataset
+  source(login_folder,  local = TRUE)
   
+  observe({toggle("main_menu")})
+  
+    observe({
+      if (USER$Logged == TRUE) {
+        shinyjs::useShinyjs()
+        toggle("main_menu")
+        toggle("login_menu")
+        updateTabItems(session, inputId = "main_menu", selected = "init_data")
+      }
+    })
+   
   con <- okan_db_connect()
   
   
@@ -594,7 +611,6 @@ server <- function(input, output, session) {
   
   output$qa1_header <- renderUI({
     str <- reactive_get_header_of_qa_table()
-    print(str)
     Encoding(str) <- "UTF-8"
     headerPanel(tags$div(
       HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
@@ -654,7 +670,6 @@ server <- function(input, output, session) {
           detail_current = detail_list2$detail_name_rus[i]
           Encoding(detail_current) <- "UTF-8"
           material_4_detail <- get_overlay_list(con)
-          print((paste0("overlay_",i)))
           column(6,
                  selectInput(paste0("overlay_",i), label = paste0(detail_current," ,наплавка:"),
                              # selectInput(paste0("material_",i), label = paste0("material_",i),
@@ -872,7 +887,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 # options(shiny.port = 7775)
-# options(shiny.host = "192.168.1.118")
+# options(shiny.host = "192.168.1.157")
 
 # options(shiny.port = 6545)
 # options(shiny.host = "192.168.1.59")
