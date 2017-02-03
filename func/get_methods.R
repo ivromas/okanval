@@ -591,7 +591,6 @@ get_qa2_operations_for_detail <- function(con, qa_type_name, tempr_name, connect
   # Encoding(x$operation_name_4table_definition) <- "UTF-8"
   return(x)
   }
-
 con <- okan_db_connect()
 
 
@@ -607,3 +606,4 @@ pressure_list <- get_pressure_list(con)
 dn_value_list <- get_dn_list(con)
 control_type_list <- get_control_type_list(con)
 okan_db_disconnect(con)
+

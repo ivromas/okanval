@@ -47,16 +47,15 @@ library(shinythemes)
 library(shinyjs)
 # Sys.setenv(JAVA_HOME="C:\\Program Files\\Java\\jdk1.8.0_121\\jre")
 library(ReporteRs)
-library(googleAuthR)
-options("googleAuthR.scopes.selected" = c("https://www.googleapis.com/auth/urlshortener"))
 
 rm(list = ls())
 
 current_folder <- "c:/_IR_F/okanval/"
-# current_folder <- "C:/OkanVal/okanval_current_script"
+# current_folder <- "C:/OkanVal/okanval_current_script/"
 func_folder <- paste0(current_folder,file.path("func", "get_methods.R"))
 source(func_folder)
 login_folder <- paste0(current_folder,"server/Login.R")
+
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny UI ####
 ### 
@@ -110,7 +109,6 @@ ui <- dashboardPage(
       tabItem(tabName = "init_data",
                 fluidPage(
                   theme  = "custom.css",
-                  googleAuthUI("loginButton"),
                   box(width = 8, title = h3("Тип клапана"), background = "light-blue",
                            selectInput("select_valve", label = NULL, 
                                        choices = valve_list$valve_name, 
@@ -206,8 +204,10 @@ ui <- dashboardPage(
 server <- function(input, output, session) {
   
 
-  # Define server logic required to summarize and view the selected dataset
   source(login_folder,  local = TRUE)
+  # #### Log in module ###
+  
+  
   
   observe({toggle("main_menu")})
   
@@ -219,9 +219,6 @@ server <- function(input, output, session) {
         updateTabItems(session, inputId = "main_menu", selected = "init_data")
       }
     })
-   
-
-  access_token <- callModule(googleAuth, "loginButton", approval_prompt = "force")
   
 
   con <- okan_db_connect()
@@ -889,12 +886,13 @@ server <- function(input, output, session) {
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny App ####
 #_________________________________________________________________________________________________________________________________________________
-
-shinyApp(ui, server)
-
 # options(shiny.port = 7775)
 # options(shiny.host = "192.168.1.157")
 
-# options(shiny.port = 6545)
-# options(shiny.host = "192.168.1.59")
+options(shiny.port = 6545)
+options(shiny.host = "192.168.1.59")
+# 
+shinyApp(ui, server)
+
+
 
