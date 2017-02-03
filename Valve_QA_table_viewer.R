@@ -66,16 +66,11 @@ ui <- dashboardPage(
     dropdownMenu(type = "messages",
                  messageItem("OKAN Team", "mailto:romas@kan.su", icon =  icon("info-circle"), time = NULL,
                                                href = NULL)
-                 # ,
-                 # notificationItem(
-                 #   text = "mailto: romas@okan.su",
-                 #   icon("info-circle")
-                 # )
+
                  )),
   ## Sidebar content
   dashboardSidebar(
     sidebarMenu(id = "login_menu",
-      # div(id="lala1",
       menuItem("Login", tabName = "login", icon = icon("glyphicon glyphicon-log-in", lib = "glyphicon"),
                badgeColor = "light-blue")
       ),
@@ -205,7 +200,9 @@ server <- function(input, output, session) {
 
   source(login_folder,  local = TRUE)
 
-  observe({toggle("main_menu")})
+  observe({
+    toggle("main_menu"
+           )})
   
     observe({
       if (USER$Logged == TRUE) {
@@ -215,10 +212,6 @@ server <- function(input, output, session) {
         updateTabItems(session, inputId = "main_menu", selected = "init_data")
       }
     })
-  
-
-  con <- okan_db_connect()
-  
   
   reactive_get_oper_table <- reactive({
     
@@ -632,12 +625,12 @@ server <- function(input, output, session) {
     renderUI({
       current_qa_type <- input$select_qa_type
       if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
-        selectInput("select_pressure", label = h5("Класс давления по ANSI"),
+        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
                     choices = pressure_list$pressure_type[2],
                     selected = 1,
                     width = "80%")
       }else {
-        selectInput("select_pressure", label = h5("Класс давления по ANSI"),
+        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
                     choices = pressure_list$pressure_type,
                     selected = 1,
                     width = "80%")
@@ -873,11 +866,7 @@ server <- function(input, output, session) {
       writeDoc(doc, file=file )
     }
   )
-  # observe({
-  #   toggleState("main", condition = input$select_valve)
-  #   
-  #   # hide("main")
-  # })
+  
 }
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny App ####
