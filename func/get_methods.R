@@ -88,8 +88,6 @@ get_control_type_list <- function(con){
   return(x)
 }
 
-
-
 get_control_type_info <- function(con, ct_name, type = NaN){
   if(type == "4table"){
     ct_select <- paste0("SELECT control_type_4code
@@ -595,6 +593,7 @@ get_qa2_operations_for_detail <- function(con, qa_type_name, tempr_name, connect
   }
 
 con <- okan_db_connect()
+
 
 
 PASSWORD <- get_user_info(con,type="all")

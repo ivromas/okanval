@@ -47,7 +47,8 @@ library(shinythemes)
 library(shinyjs)
 # Sys.setenv(JAVA_HOME="C:\\Program Files\\Java\\jdk1.8.0_121\\jre")
 library(ReporteRs)
-
+library(googleAuthR)
+options("googleAuthR.scopes.selected" = c("https://www.googleapis.com/auth/urlshortener"))
 
 rm(list = ls())
 
@@ -56,7 +57,6 @@ current_folder <- "c:/_IR_F/okanval/"
 func_folder <- paste0(current_folder,file.path("func", "get_methods.R"))
 source(func_folder)
 login_folder <- paste0(current_folder,"server/Login.R")
-
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny UI ####
 ### 
@@ -110,6 +110,7 @@ ui <- dashboardPage(
       tabItem(tabName = "init_data",
                 fluidPage(
                   theme  = "custom.css",
+                  googleAuthUI("loginButton"),
                   box(width = 8, title = h3("Тип клапана"), background = "light-blue",
                            selectInput("select_valve", label = NULL, 
                                        choices = valve_list$valve_name, 
@@ -204,6 +205,7 @@ ui <- dashboardPage(
 #_________________________________________________________________________________________________________________________________________________
 server <- function(input, output, session) {
   
+
   # Define server logic required to summarize and view the selected dataset
   source(login_folder,  local = TRUE)
   
@@ -218,6 +220,10 @@ server <- function(input, output, session) {
       }
     })
    
+
+  access_token <- callModule(googleAuth, "loginButton", approval_prompt = "force")
+  
+
   con <- okan_db_connect()
   
   
@@ -542,8 +548,7 @@ server <- function(input, output, session) {
         }
         details_for_welding_list <- left_join(details_for_welding_list, overlay_detail_list,
                                                by = "detail_4con_name")
-      }
-      
+      }      
       x <- which(details_for_welding_list$input_overlay_type == "Отсутствует")
       x <- details_for_welding_list[x,]
       details_for_welding_list <- anti_join(details_for_welding_list,x, by = "input_overlay_type")
@@ -611,6 +616,7 @@ server <- function(input, output, session) {
   
   output$qa1_header <- renderUI({
     str <- reactive_get_header_of_qa_table()
+    print(str)
     Encoding(str) <- "UTF-8"
     headerPanel(tags$div(
       HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
