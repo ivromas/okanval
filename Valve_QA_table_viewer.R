@@ -213,6 +213,12 @@ server <- function(input, output, session) {
       }
     })
   
+<<<<<<< HEAD
+=======
+  con <- okan_db_connect()
+  
+  
+>>>>>>> origin/qa2_editing
   reactive_get_oper_table <- reactive({
     
     dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 1")
@@ -878,6 +884,4 @@ options(shiny.port = 6545)
 options(shiny.host = "192.168.1.59")
 # 
 shinyApp(ui, server)
-
-
 
