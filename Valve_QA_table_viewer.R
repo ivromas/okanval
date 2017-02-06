@@ -104,11 +104,16 @@ ui <- dashboardPage(
       tabItem(tabName = "init_data",
                 fluidPage(
                   theme  = "custom.css",
-                  box(width = 8, title = h3("Тип клапана"), background = "light-blue",
-                           selectInput("select_valve", label = NULL, 
-                                       choices = valve_list$valve_name, 
-                                       selected = 1,
-                                       width = "100%")
+                  box(width = 8, title = h3("Параметры клапана"), background = "light-blue",
+                      column(6,
+                           selectInput("select_valve", label = "Тип клапана", 
+                                       choices = valve_list$valve_name_for_select,
+                                       selected = "Клапан регулирующий",
+                                       width = "70%")
+                      ),
+                      column(6,
+                             htmlOutput("dynamic_select_valve")
+                      )
                            ),
                   box(width = 4, background = "light-blue",
                          textInput("rv_drawing_number", "Введите обозначение чертежа деталей ",
@@ -212,13 +217,9 @@ server <- function(input, output, session) {
         updateTabItems(session, inputId = "main_menu", selected = "init_data")
       }
     })
-  
-<<<<<<< HEAD
-=======
+    
   con <- okan_db_connect()
   
-  
->>>>>>> origin/qa2_editing
   reactive_get_oper_table <- reactive({
     
     dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 1")
@@ -226,8 +227,8 @@ server <- function(input, output, session) {
     tempr <- input$select_tempr
     tempr_oper <- input$select_tempr_oper
     pressure <- input$select_pressure
-    valve_name <- input$select_valve
-    detail_list <- get_detial_list(con, input$select_valve)
+    valve_name <- SELECTED_VALVE()
+    detail_list <- get_detial_list(con, SELECTED_VALVE())
     # drawing_number_of_detail <- data.frame(names = 0)
     drawing_number_of_detail <- data.frame(names=as.character(seq(length(detail_list$detail_name_rus))),
                                            stringsAsFactors=FALSE) 
@@ -464,12 +465,12 @@ server <- function(input, output, session) {
                      dn.dn_value = '", input$dn_value,"';
                      ")
     dn <- dbGetQuery(con,select)
-    dn<- dn$dn_4_code[1]
-    valve_type <- get_valve_input_info(con, input$select_valve, type = "type")
+    dn <- dn$dn_4_code[1]
+    valve_type <- get_valve_input_info(con, SELECTED_VALVE(), type = "type")
     material <- input$material_1
     material_type <- get_material_input_info(con, input$material_1, type = "body material type")
     qa_type <- get_qa_input_info(con, input$select_qa_type, type = "qa type name")
-    control_type <- get_valve_input_info(con, input$select_valve, type = "control_type")
+    control_type <- get_valve_input_info(con, SELECTED_VALVE(), type = "control_type")
     control_valve_type <- get_control_type_info(con, input$control_type, type = "4table")
     x <- paste0("OK.", dn, ".A",  valve_type, ".", material_type, qa_type, control_type, control_valve_type)
     return(x)
@@ -479,7 +480,7 @@ server <- function(input, output, session) {
   reactive_get_header_of_qa_table <- reactive({
     code <- reactive_get_valve_code()
     
-    x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, input$select_valve, type = "type_def")
+    x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
                 , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
     return(x)
   })
@@ -488,7 +489,7 @@ server <- function(input, output, session) {
   reactive_get_header_of_qa2_table <- reactive({
     code <- reactive_get_valve_code()
     
-    x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, input$select_valve, type = "type_def")
+    x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
                 , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
     return(x)
   })
@@ -505,7 +506,7 @@ server <- function(input, output, session) {
     qa_type_name <- input$select_qa_type
     qa_type_welding <- get_qa_input_info(con, qa_type_name, type = "qa welding")
     tempr_name <- input$select_tempr
-    valve_name <- input$select_valve
+    valve_name <- SELECTED_VALVE()
     dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 2")
 
     
@@ -525,7 +526,7 @@ server <- function(input, output, session) {
       yyy <- which(is.na(details_for_welding_list$`Кат.сварных соединений`))
       details_for_welding_list$`Кат.сварных соединений`[yy] <- qa_type_welding
       details_for_welding_list$`Кат.сварных соединений`[yyy] <- "-"
-      detail_list2 <- get_overlay_detail_list(con, input$select_valve)
+      detail_list2 <- get_overlay_detail_list(con, SELECTED_VALVE())
       
       if(is.data.frame(detail_list2)){
         overlay_detail_list <- get_overlay_detail_list(con, valve_name)
@@ -608,7 +609,6 @@ server <- function(input, output, session) {
   
   output$qa1_header <- renderUI({
     str <- reactive_get_header_of_qa_table()
-    print(str)
     Encoding(str) <- "UTF-8"
     headerPanel(tags$div(
       HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
@@ -616,7 +616,7 @@ server <- function(input, output, session) {
   })
   
   output$qa2_header <- renderUI({
-    if ( input$select_valve != "Кран шаровый" ) {
+    if ( SELECTED_VALVE() != "Кран шаровый" ) {
       str <- reactive_get_header_of_qa2_table()
       headerPanel(tags$div(
         HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
@@ -626,7 +626,7 @@ server <- function(input, output, session) {
     }
   })
   
-
+  
   output$dynamic_select_pressure <-
     renderUI({
       current_qa_type <- input$select_qa_type
@@ -644,13 +644,124 @@ server <- function(input, output, session) {
       
     })
   
+  SELECTED_VALVE <- reactive({
+    valve_general <- input$select_valve
+    str <- ""
+    if (valve_general == "Задвижка" || valve_general == "Затвор" || valve_general == "Кран" ||
+        valve_general == "Клапан обратный") {
+      return(input$select_valve_full)
+    } else if (valve_general == "Клапан запорный") {
+      if (input$bellow == TRUE)
+      {
+        valve_bellow_id <- 1
+      } else {
+        valve_bellow_id <- 2
+      }
+      
+      if(input$cone == TRUE) {
+        vale_type_by_socet <- 1
+      } else {
+        vale_type_by_socet <- 2
+      }
+      str <- paste0("SELECT
+                    valve.valve_name
+                    FROM 
+                    public.valve, 
+                    public.valve_bellow_type, 
+                    public.valve_id_to_socet, 
+                    public.valve_to_bellow, 
+                    public.valve_type
+                    WHERE 
+                    valve_bellow_type.valve_bellow_id = valve_to_bellow.valve_bellow_id AND
+                    valve_id_to_socet.valve_id = valve.valve_id AND
+                    valve_to_bellow.valve_id = valve.valve_id AND
+                    valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet AND
+                    valve_bellow_type.valve_bellow_id =", valve_bellow_id ," AND 
+                    valve_type.valve_type_by_socet =" ,vale_type_by_socet ,"AND
+                    valve.valve_id BETWEEN 14 AND 17;")
+      x <- dbGetQuery(con,str)
+      Encoding(x$valve_name) <- "UTF-8"
+      return(x$valve_name)
+      # TODO написать метод возращающий 1 клапан по условиям см. get_valve_list
+    } else if (valve_general == "Клапан регулирующий") {
+      if (input$bellow == TRUE)
+      {
+        valve_bellow_id <- 1
+      } else {
+        valve_bellow_id <- 2
+      }
+      
+      if(input$cone == TRUE) {
+        vale_type_by_socet <- 1
+      } else {
+        vale_type_by_socet <- 2
+      }
+      
+      if (input$plug == TRUE) {
+        plug_type_id <- 1
+      } else {
+        plug_type_id <- 2
+      }
+      str <- paste0("SELECT 
+                    valve.valve_name
+                    FROM 
+                    public.valve, 
+                    public.valve_to_bellow, 
+                    public.valve_to_plug, 
+                    public.valve_type, 
+                    public.valve_id_to_socet, 
+                    public.valve_bellow_type, 
+                    public.valve_plug_type
+                    WHERE 
+                    valve_to_bellow.valve_bellow_id = valve_bellow_type.valve_bellow_id AND
+                    valve_to_bellow.valve_id = valve.valve_id AND
+                    valve_to_plug.valve_id = valve.valve_id AND
+                    valve_id_to_socet.valve_id = valve.valve_id AND
+                    valve_id_to_socet.valve_type_by_socet = valve_type.valve_type_by_socet AND
+                    valve_plug_type.plug_type_id = valve_to_plug.plug_type_id AND
+                    valve.valve_id <= 8 AND
+                    valve_bellow_type.valve_bellow_id =", valve_bellow_id, " AND 
+                    valve_type.valve_type_by_socet =", vale_type_by_socet, " AND
+                    valve_plug_type.plug_type_id =", plug_type_id, ";
+                    ")
+      x <- dbGetQuery(con,str)
+      Encoding(x$valve_name) <- "UTF-8"
+      return(x$valve_name)
+      # TODO написать метод возращающий 1 клапан по условиям см. get_valve_list
+    }
+  })
+  
+  output$dynamic_select_valve <-
+    renderUI({
+      valve_general <- input$select_valve
+      if (valve_general == "Задвижка" || valve_general == "Затвор" || valve_general == "Кран" ||
+          valve_general == "Клапан обратный") {
+        x <- get_valve_list(con, type = "part", valve_general_name = input$select_valve)
+        selectInput("select_valve_full", label = h5("Клапан"),
+                    choices = x$valve_name,
+                    selected = 1,
+                    width = "80%")
+      } else if (valve_general == "Клапан запорный") {
+        fluidPage(
+          checkboxInput("bellow", "C сильфоном", value = FALSE, width = NULL),
+          checkboxInput("cone", "С перех.патрубком", value = FALSE, width = NULL)
+        )
+      } else if (valve_general == "Клапан регулирующий") {
+        fluidPage(
+          checkboxInput("bellow", "C сильфоном", value = FALSE, width = NULL),
+          checkboxInput("cone", "С перех.патрубком", value = FALSE, width = NULL),
+          checkboxInput("plug", "C разгруженным золотником", value = FALSE, width = NULL)
+        )
+      }
+    })
+  
   output$details_and_materials <- 
     renderUI({
-      detail_list <- get_detial_list(con, input$select_valve)
+      detail_list <- get_detial_list(con, SELECTED_VALVE())
       lapply(1:length(detail_list$detail_name_rus), function(i) {
         detail_current = detail_list$detail_name_rus[i]
         Encoding(detail_current) <- "UTF-8"
-        material_4_detail <- get_material_list(con, detail_current, input$select_valve)
+        material_4_detail <- get_material_list(con, detail_current, SELECTED_VALVE())
         column(6,
                selectInput(paste0("material_",i), label = paste0(detail_current," ,материал:"),
                            # selectInput(paste0("material_",i), label = paste0("material_",i),
@@ -662,7 +773,7 @@ server <- function(input, output, session) {
   
   output$details_and_overlays <-
     renderUI({
-      detail_list2 <- get_overlay_detail_list(con, input$select_valve)
+      detail_list2 <- get_overlay_detail_list(con, SELECTED_VALVE())
       if(is.data.frame(detail_list2)){
         lapply(1:length(detail_list2$detail_4con_name), function(i) {
           detail_current = detail_list2$detail_name_rus[i]
@@ -678,7 +789,7 @@ server <- function(input, output, session) {
       }
     })
   
-  observe({if(input$select_valve != "Кран шаровый") {
+  observe({if(input$select_valve != "Кран") {
     shinyjs::enable( "downloadDataDocx_qa2")
     shinyjs::enable( "download_qa2")
   } else{
@@ -717,7 +828,7 @@ server <- function(input, output, session) {
       progress$set(message = "Создание новой таблицы ТБ2", value = 0.3)
       Sys.sleep(0.8)
       progress$set(message = "Создание новой таблицы ТБ2", value = 0.5)
-      if(input$select_valve != "Кран шаровый"){
+      if(SELECTED_VALVE() != "Кран шаровый"){
         gvisTable(reactiive_get_welding_and_overaly_table(), options=list(frozenColumns = 2, allowHtml = TRUE, showRowNumber = FALSE
                                                                           # cssClassNames = "{headerRow: 'myTableHeadrow'}", alternatingRowStyle = FALSE
         ))
@@ -742,7 +853,7 @@ server <- function(input, output, session) {
   
   output$text_qa2 <-
     renderText({
-      if (input$select_valve != "Кран шаровый") {
+      if (SELECTED_VALVE() != "Кран шаровый") {
       HTML(paste0(
         "<p><b>Обозначения:</b></p>
         <p>ВК   - входной контроль;</p>
@@ -879,9 +990,9 @@ server <- function(input, output, session) {
 #_________________________________________________________________________________________________________________________________________________
 # options(shiny.port = 7775)
 # options(shiny.host = "192.168.1.157")
-
-options(shiny.port = 6545)
-options(shiny.host = "192.168.1.59")
+# 
+# options(shiny.port = 6545)
+# options(shiny.host = "192.168.1.59")
 # 
 shinyApp(ui, server)
 

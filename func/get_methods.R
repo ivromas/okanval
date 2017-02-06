@@ -104,12 +104,30 @@ get_control_type_info <- function(con, ct_name, type = NaN){
 }
 
 
-get_valve_list <- function(con){
-  dbSendQuery(con, "SET NAMES 'UTF-8'")
-  x <- dbGetQuery(con,"SELECT valve_id, valve_name FROM valve")
-  Encoding(x$valve_name) <- "UTF-8"
-  x <- x[order(x$valve_id),]
-  return(x)
+get_valve_list <- function(con, type = NULL, valve_general_name = NULL, 
+                           valve_bellow_id = NULL, vale_type_by_socet = NULL, plug_name = NULL){
+  if (type == "general") {
+    x <- dbGetQuery(con,"SELECT DISTINCT valve_name_for_select FROM valve")
+    Encoding(x$valve_name_for_select) <- "UTF-8"
+    return(x)
+  }else if (type == "part") {
+    str <- paste0("SELECT valve_name FROM valve WHERE valve_name_for_select = '",valve_general_name,"';")
+    x <- dbGetQuery(con, str)
+    Encoding(x$valve_name) <- "UTF-8"
+    return(x)
+  } else if (type == "for details") {
+    str <- paste0("SELECT valve_name, valve_id FROM valve;")
+    x <- dbGetQuery(con, str)
+    Encoding(x$valve_name) <- "UTF-8"
+    return(x)
+  }else if (type == "control valve") {
+    
+  }else{
+  
+      return(NULL)
+  
+    }
+  
 }
 
 
@@ -248,6 +266,7 @@ get_pressure_input_info <- function(con, pressure, type = NaN){
 
 
 get_detial_list <- function(con,valve_name){
+  valve_list <- get_valve_list(con, type = "for details")
   valve <- which(valve_list$valve_name == valve_name, arr.ind = TRUE)
   valve_id <- valve_list$valve_id[valve]
   select_details <- paste0("SELECT detail.detail_id, detail.detail_name_rus, detail.detail_name_eng
@@ -593,17 +612,17 @@ get_qa2_operations_for_detail <- function(con, qa_type_name, tempr_name, connect
   }
 con <- okan_db_connect()
 
-
-
 PASSWORD <- get_user_info(con,type="all")
 Logged = FALSE;
 
-valve_list <- get_valve_list(con)
+valve_list <- get_valve_list(con, type = "general")
 qa_type_list <- get_qa_type_list(con)
 tempr_list <- get_tempr_list(con)
 tempr_oper_list <- get_tempr_oper_list(con)
 pressure_list <- get_pressure_list(con)
 dn_value_list <- get_dn_list(con)
 control_type_list <- get_control_type_list(con)
+
+
 okan_db_disconnect(con)
 
