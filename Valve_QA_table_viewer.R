@@ -113,8 +113,9 @@ ui <- dashboardPage(
                       ),
                       column(6,
                              htmlOutput("dynamic_select_valve")
-                      )
-                           ),
+                      ),
+                      uiOutput("selected_valve_text_output")
+                  ),
                   box(width = 4, background = "light-blue",
                          textInput("rv_drawing_number", "Введите обозначение чертежа деталей ",
                                    value = "RV-YYYYYY", width = "80%"),
@@ -138,12 +139,12 @@ ui <- dashboardPage(
                                      selected = 1,
                                      width = "80%")),
                   column(4,
-                    selectInput("select_tempr", label = h5("Т-ра окружающей среды во время эксплуатации выше 0?"), 
+                    selectInput("select_tempr", label = h5("Т-ра рабочей среды выше 100?"), 
                                 choices = tempr_list$tempr_value_more_than_100, 
                                 selected = 1,
                                 width = "80%")),
                   column(4,
-                    selectInput("select_tempr_oper", label = h5("Внешняя Т-ра выше 20?"), 
+                    selectInput("select_tempr_oper", label = h5("Т-ра окружающей среды во время эксплуатации выше 0?"), 
                                 choices = tempr_oper_list$tempr_oper_value_more_than_20, 
                                 selected = 1,
                                 width = "100%")),
@@ -658,7 +659,7 @@ server <- function(input, output, session) {
         valve_bellow_id <- 2
       }
       
-      if(input$cone == TRUE) {
+      if (input$cone == TRUE) {
         vale_type_by_socet <- 1
       } else {
         vale_type_by_socet <- 2
@@ -691,7 +692,7 @@ server <- function(input, output, session) {
         valve_bellow_id <- 2
       }
       
-      if(input$cone == TRUE) {
+      if (input$cone == TRUE) {
         vale_type_by_socet <- 1
       } else {
         vale_type_by_socet <- 2
@@ -727,7 +728,6 @@ server <- function(input, output, session) {
       x <- dbGetQuery(con,str)
       Encoding(x$valve_name) <- "UTF-8"
       return(x$valve_name)
-      # TODO написать метод возращающий 1 клапан по условиям см. get_valve_list
     }
   })
   
@@ -753,6 +753,7 @@ server <- function(input, output, session) {
           checkboxInput("plug", "C разгруженным золотником", value = FALSE, width = NULL)
         )
       }
+      
     })
   
   output$details_and_materials <- 
@@ -770,6 +771,18 @@ server <- function(input, output, session) {
         )
       })
     })
+  
+  output$selected_valve_text_output <- renderUI({
+     
+    if (SELECTED_VALVE() == "Задвижка клиновая") {
+      str <- paste0("Выбрана ",tolower(SELECTED_VALVE()))
+    } else{
+      str <- paste0("Выбран ",tolower(SELECTED_VALVE()))
+    }
+    headerPanel(tags$div(
+      HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+    ))
+  })
   
   output$details_and_overlays <-
     renderUI({
