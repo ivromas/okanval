@@ -64,7 +64,7 @@ ui <- dashboardPage(
   dashboardHeader(title = "OKANVAL web-UI demo",
     # Notification menu
     dropdownMenu(type = "messages",
-                 messageItem("OKAN Team", "mailto:romas@kan.su", icon =  icon("info-circle"), time = NULL,
+                 messageItem("OKAN Team SW dep.", "mailto:romas@kan.su", icon =  icon("info-circle"), time = NULL,
                                                href = NULL)
 
                  )),
@@ -77,6 +77,8 @@ ui <- dashboardPage(
     sidebarMenu( id = "main_menu",
           menuItem("Исходные данные", tabName = "init_data", icon = icon("home"),
                    badgeLabel = "1", badgeColor = "light-blue"),
+          menuItem("Подбор привода", tabName = "el_drive", icon = icon("cogs"),
+                   badgeLabel = "2", badgeColor = "light-blue"),
           menuItem("Материалы деталей", tabName = "det_n_mat", icon = icon("list"),
                    badgeLabel = "2", badgeColor = "light-blue"),
           menuItem("ТБ", tabName = "qa_tables", icon = icon("table"),
@@ -149,7 +151,7 @@ ui <- dashboardPage(
                                 selected = 1,
                                 width = "100%")),
                   column(4,
-                    htmlOutput("dynamic_select_pressure"))
+                         uiOutput("dynamic_select_pressure"))
                   )
                 )
               
@@ -194,6 +196,20 @@ ui <- dashboardPage(
                            )
                          )
                 )
+              ),
+      tabItem(tabName = "el_drive",
+              fluidPage(
+                box(width = 12,
+                    title = h3("Подбор электропривода"), 
+                    background = "light-blue",
+                    column(width = 12, 
+                      htmlOutput("el_drive_select")
+                          ),
+                    column(width = 12,
+                           uiOutput("eldrive_print_name")
+                           )
+                )
+              )
               )
       )
     )
@@ -206,20 +222,82 @@ server <- function(input, output, session) {
 
   source(login_folder,  local = TRUE)
 
+  # observe({
+  #   toggle("main_menu"
+  #          )})
+
   observe({
-    toggle("main_menu"
-           )})
-  
-    observe({
-      if (USER$Logged == TRUE) {
-        shinyjs::useShinyjs()
-        toggle("main_menu")
-        toggle("login_menu")
-        updateTabItems(session, inputId = "main_menu", selected = "init_data")
+    if (USER$Logged == TRUE) {
+      shinyjs::useShinyjs()
+      toggle("main_menu")
+      toggle("login_menu")
+      updateTabItems(session, inputId = "main_menu", selected = "init_data")
       }
-    })
+  })
     
+  observe({if(input$select_valve != "Кран") {
+      shinyjs::enable( "downloadDataDocx_qa2")
+      shinyjs::enable( "download_qa2")
+    } else{
+      shinyjs::disable( "downloadDataDocx_qa2")
+      shinyjs::disable( "download_qa2")
+    }
+    })
+  
+  observeEvent(input$close_time, {
+    if (input$close_time < 5) {
+      updateNumericInput(session, "close_time", value = 5)
+    } else if (input$close_time > 500) {
+      updateNumericInput(session, "close_time", value = 500)
+    }
+  })
+  
+  observeEvent(input$stem_stroke, {
+    if (input$stem_stroke < 10) {
+      updateNumericInput(session, "stem_stroke", value = 10)
+    } else if (input$stem_stroke > 800) {
+      updateNumericInput(session, "stem_stroke", value = 800)
+    }
+  })
+  
+  observeEvent(input$stem_force, {
+    if (input$stem_force < 3400) {
+      updateNumericInput(session, "stem_force", value = 3400)
+    } else if (input$stem_force > 144000) {
+      updateNumericInput(session, "stem_force", value = 144000)
+    }
+  })
+  
+  observeEvent(input$thread_pitch, {
+    if (input$thread_pitch < 1) {
+      updateNumericInput(session, "thread_pitch", value = 1)
+    } else if (input$thread_pitch > 15) {
+      updateNumericInput(session, "thread_pitch", value = 15)
+    }
+  })
+  
+  observeEvent(input$stem_diameter, {
+    if (input$stem_diameter < 12) {
+      updateNumericInput(session, "stem_diameter", value = 12)
+    } else if (input$stem_diameter > 800) {
+      updateNumericInput(session, "stem_diameter", value = 800)
+    }
+  })
+  
+  observeEvent(input$multithread, {
+    if (input$multithread < 1) {
+      updateNumericInput(session, "multithread", value = 1)
+    } else if (input$multithread > 5) {
+      updateNumericInput(session, "multithread", value = 5)
+    }
+  })
+  
+  electric_drive_print_text <- eventReactive(
+    input$select_el_drive_btn, reactive_get_el_drive_full_name()
+    )
+
   con <- okan_db_connect()
+  
   
   reactive_get_oper_table <- reactive({
     
@@ -608,42 +686,98 @@ server <- function(input, output, session) {
     }
   })
   
-  output$qa1_header <- renderUI({
-    str <- reactive_get_header_of_qa_table()
-    Encoding(str) <- "UTF-8"
-    headerPanel(tags$div(
-      HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
-    ))
-  })
   
-  output$qa2_header <- renderUI({
-    if ( SELECTED_VALVE() != "Кран шаровый" ) {
-      str <- reactive_get_header_of_qa2_table()
-      headerPanel(tags$div(
-        HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
-      ))
-    }else{
-      headerPanel(h4("ТБ2 не требуется"))
+  reactive_get_el_drive <- reactive({
+    
+    if (input$bellow == TRUE) {
+      safety_factor <- 1.5
+    } else {
+      safety_factor <- 1.2
+    }
+    
+    # time to mitue value
+    close_time <- input$close_time / 60
+    stem_stroke <- input$stem_stroke
+    # adding safety factor to force
+    stem_force <- input$stem_force * safety_factor
+    
+    if ((input$LE_module == TRUE)) {
+      # speed in [mm per minute]
+      speed <- stem_stroke / close_time
+      x <- get_eldrive(con, type = "LE + SAR", speed = speed, stem_stroke = stem_stroke, stem_force = stem_force)
+      Encoding(x) <- "UTF-8"
+      return(x)
+    } else {
+      # Шаг резьбы [мм]
+      thread_pitch <- input$thread_pitch
+      # Диаметр штока [мм]
+      stem_diameter <- input$stem_diameter
+      # Многозаходность
+      multithread <- input$multithread
+      # частота вращения приводного вала
+      nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
+      # Пределы регулирования муфты ограничения кутящего момента
+      torque <- stem_force * stem_diameter / 2 * (nesessary_number_of_rotations * thread_pitch / 
+                                                     (pi *  stem_diameter) + 0.144) / 1000
+      torque <- round(torque) %>% as.integer()
+      
+      x <- get_eldrive(con, type = input$el_drive_type, stem_stroke = stem_stroke, torque = torque, 
+                       nesessary_number_of_rotations = nesessary_number_of_rotations)
+      return(x)
     }
   })
   
   
-  output$dynamic_select_pressure <-
-    renderUI({
-      current_qa_type <- input$select_qa_type
-      if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
-        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
-                    choices = pressure_list$pressure_type[2],
-                    selected = 1,
-                    width = "80%")
-      }else {
-        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
-                    choices = pressure_list$pressure_type,
-                    selected = 1,
-                    width = "80%")
+  reactive_get_el_drive_full_name <- reactive({
+    
+    x <- reactive_get_el_drive()
+    
+    if ( nrow(x) == 0) {
+      str <- paste0("Введены невалидные исходные параметры")
+      
+    } else {
+      
+      if (input$gold_plated_contacts == "Стандартные") {
+        number <- ""
+      } else {
+        number <- "G"
+      }
+      # LE module dependencies
+      if (input$LE_module == FALSE) {
+        str_part1 <- paste0(x$flange_fittings, "A")
+        str_part_last <- ""
+      } else {
+        str_part1 <- paste0(x$flange_fittings, "LE")
+        str_part_last <- paste0("+", x$modul_type)
+      }
+
+      if (input$limit_switches_type == "Одиночные" && input$intermediate_position_switches_type == "Сдвоенные") {
+        str_part2 <- paste0("6",number,"-9.3",number,"-DUO")
+        str_part_add_3 <- "030"
+      } else if (input$limit_switches_type == "Сдвоенные" && input$intermediate_position_switches_type == "Одиночные") {
+        str_part2 <- paste0("6",number,"-9.2",number,"-DUO")
+        str_part_add_3 <- "200"
+      } else if (input$limit_switches_type == "Одиночные" && input$intermediate_position_switches_type == "Одиночные") {
+        str_part2 <- paste0("6",number,"-9",number,"-DUO")
+        str_part_add_3 <- "010"
+      } else {
+        str_part2 <- paste0("6",number,"-9.4",number,"-DUO")
+        str_part_add_3 <- "210"
+      }
+
+      
+      if (input$el_drive_type == "SAR") {
+        str_part3 <- paste0("21/4-S105-11-IP67-KS-TP104/",str_part_add_3)
+      } else if (input$el_drive_type == "SARI") {
+        str_part3 <- paste0("12.E-SH-148-IP68-KSG-TPA00R0AE-0A0-000")
       }
       
-    })
+      str <- paste0("Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50*3", "-", x$rotation_speed, "-", 
+                    "10.1-XX-",str_part2,"-",str_part3,str_part_last )
+    }
+    return(str)
+  })
+  
   
   SELECTED_VALVE <- reactive({
     valve_general <- input$select_valve
@@ -731,6 +865,45 @@ server <- function(input, output, session) {
     }
   })
   
+  
+  output$qa1_header <- renderUI({
+    str <- reactive_get_header_of_qa_table()
+    Encoding(str) <- "UTF-8"
+    headerPanel(tags$div(
+      HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+    ))
+  })
+  
+  output$qa2_header <- renderUI({
+    if ( SELECTED_VALVE() != "Кран шаровый" ) {
+      str <- reactive_get_header_of_qa2_table()
+      headerPanel(tags$div(
+        HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+      ))
+    }else{
+      headerPanel(h4("ТБ2 не требуется"))
+    }
+  })
+  
+  
+  output$dynamic_select_pressure <-
+    renderUI({
+      current_qa_type <- input$select_qa_type
+      if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
+        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
+                    choices = pressure_list$pressure_type[2],
+                    selected = 1,
+                    width = "80%")
+      }else {
+        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
+                    choices = pressure_list$pressure_type,
+                    selected = 1,
+                    width = "80%")
+      }
+      
+    })
+  
+  
   output$dynamic_select_valve <-
     renderUI({
       valve_general <- input$select_valve
@@ -802,13 +975,92 @@ server <- function(input, output, session) {
       }
     })
   
-  observe({if(input$select_valve != "Кран") {
-    shinyjs::enable( "downloadDataDocx_qa2")
-    shinyjs::enable( "download_qa2")
-  } else{
-    shinyjs::disable( "downloadDataDocx_qa2")
-    shinyjs::disable( "download_qa2")
+  output$el_drive_select <-
+    renderUI({
+      if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
+        fluidPage(
+          box(width = 12,
+              background = "light-blue",
+            column(width = 4,
+              radioButtons(inputId =  "el_drive_type","Тип привода", c("SAR", "SARI"))
+              ),
+            column(width = 8,
+              htmlOutput("LE")
+              )
+            ),
+          column(width = 4,
+                 htmlOutput("eldrive_param")
+                 ),
+          column(width = 4,
+            htmlOutput("thread")
+            ),
+          column(width = 4, 
+                 htmlOutput("contact_param")
+                 ),
+          column(width = 12,
+                 actionButton(inputId = "select_el_drive_btn", label = "Подбор электропривода по заданным параметрам",
+                              icon = icon("check-square"))
+                 )
+        )
+      } else{
+        headerPanel(tags$div(
+          HTML(paste0("<strong>",'<font face="Bedrock" size="4">',"Электропривод не требуется","</font>","</strong>"))
+        ))
+      }
+    })
+  
+  output$eldrive_param <- 
+    renderUI({
+      fluidPage(
+        numericInput("close_time", "Время закрытия [сек]",value = 30, min = 5, max = 500, step = 5, width = "100%"),
+        numericInput("stem_stroke", "Ход штока [мм]",value = 10, min = 10, max = 800, step = 10, width = "100%"),
+        numericInput("stem_force", "Максимальное усилие на штоке [Н]",value = 3400, min = 3400, max = 144000, 
+                     step = 500, width = "100%")
+      )
+    })
+  
+  output$eldrive_print_name <-
+      renderUI({
+          headerPanel(tags$div(
+            HTML(paste0("<strong>",'<font face="Bedrock" size="4", color="black">',
+                        electric_drive_print_text(),"</font>","</strong>"))
+          ))
+    })
+  
+  output$LE <- 
+    renderUI({
+    if (input$el_drive_type == "SAR") {
+        checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE)
     }
+  })
+  
+  output$thread <-
+    renderUI({
+      if (input$LE_module == FALSE || input$el_drive_type == "SARI") {
+        fluidPage(
+          numericInput("thread_pitch", "Шаг резьбы [мм]",value = 5, min = 1, max = 15, width = "100%"),
+          numericInput("stem_diameter", "Диаметр штока [мм]",value = 12, min = 12, max = 800, width = "100%"),
+          numericInput("multithread", "Многозаходность",value = 1, min = 1, max = 5, width = "100%")
+        )
+      }
+    })
+  
+  output$contact_param <-
+    renderUI({
+      fluidPage(
+        selectInput("gold_plated_contacts", label = h5("Тип контактов"), 
+                    choices = c("Стандартные", "Позолоченые"), 
+                    selected = 1,
+                    width = "100%"),
+        selectInput("limit_switches_type", label = h5("Тип концевых выключателей"), 
+                    choices = c("Одиночные", "Сдвоенные"), 
+                    selected = 1,
+                    width = "100%"),
+        selectInput("intermediate_position_switches_type", label = h5("Тип промежуточных выключателей"), 
+                    choices = c("Одиночные", "Сдвоенные"), 
+                    selected = 1,
+                    width = "100%")
+      )
     })
   
   
