@@ -39,7 +39,12 @@
 
 
 reactive_get_oper_table <- reactive({
-  
+  # error_str <- "Укажите материалы деталей"
+  # Encoding(error_str) <- "UTF-8"
+  validate(
+    need(input$material_1 != "", "")
+    )
+    
   dataframe_to_be_retuned <- get_distinct_names_of_qa_operations(con,type = "QA 1")
   qa_type <- input$select_qa_type
   tempr <- input$select_tempr
@@ -188,6 +193,10 @@ reactive_get_definition_of_designations_for_qa2 <- reactive({
 
 
 reactiive_get_welding_and_overaly_table <- reactive({
+  validate(
+    need(input$material_1 != "", "")
+  )
+  
   qa_type_name <- input$select_qa_type
   qa_type_welding <- get_qa_input_info(con, qa_type_name, type = "qa welding")
   tempr_name <- input$select_tempr

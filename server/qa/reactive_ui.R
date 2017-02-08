@@ -40,6 +40,8 @@
 
 Sys.setlocale('LC_ALL', 'Russian')
 
+
+
 output$details_and_materials <- 
   renderUI({
     detail_list <- get_detial_list(con, SELECTED_VALVE())
