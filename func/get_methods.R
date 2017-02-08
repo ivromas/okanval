@@ -38,16 +38,13 @@
 ### Usful functions ####
 #_________________________________________________________________________________________________________________________________________________
 okan_db_connect <- function() {
-  pw <- {
-    "qwerty123"
-  }
   # loads the PostgreSQL driver
   drv <- dbDriver("PostgreSQL")
   # creates a connection to the postgres database
   # note that "con" will be used later in each connection to the database
-  con <- dbConnect(drv, dbname = "qa_db",
-                   host = "okanval.okan.su", port = 6543,
-                   user = "user_web_ui", password = pw)
+  con <- dbConnect(drv, dbname = DB_NAME,
+                   host = HOST_DB, port = PORT_DB,
+                   user = USER_DB, password = PASSWORD_DB)
   # con <- dbConnect(drv, dbname = "qa_db",
   #                  host = "localhost", port = 5432,
   #                  user = "postgres", password = pw)
