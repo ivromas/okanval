@@ -34,4 +34,22 @@
 
 # coding UTF-8
 
+PASSWORD_DB <- {
+  "qwerty123"
+}
 
+USER_DB <- {
+  "user_web_ui"
+}
+
+HOST_DB <- {
+  "okanval.okan.su"
+}
+
+PORT_DB <- {
+  "6543"
+}
+
+DB_NAME <- {
+  "qa_db"
+}

@@ -38,16 +38,13 @@
 ### Usful functions ####
 #_________________________________________________________________________________________________________________________________________________
 okan_db_connect <- function() {
-  pw <- {
-    "qwerty123"
-  }
   # loads the PostgreSQL driver
   drv <- dbDriver("PostgreSQL")
   # creates a connection to the postgres database
   # note that "con" will be used later in each connection to the database
-  con <- dbConnect(drv, dbname = "qa_db",
-                   host = "okanval.okan.su", port = 6543,
-                   user = "user_web_ui", password = pw)
+  con <- dbConnect(drv, dbname = DB_NAME,
+                   host = HOST_DB, port = PORT_DB,
+                   user = USER_DB, password = PASSWORD_DB)
   # con <- dbConnect(drv, dbname = "qa_db",
   #                  host = "localhost", port = 5432,
   #                  user = "postgres", password = pw)
@@ -564,6 +561,64 @@ get_conncetion_type_info <- function(con, detail_4con_name, type = NaN){
   #   return(con_id)
   }else {
     return(NaN)
+  }
+}
+
+
+get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force=NULL, torque=NULL,
+                        nesessary_number_of_rotations=NULL) {
+  if (type == "LE + SAR") {
+    str <- paste0("SELECT 
+                  le_modul.modul_type, 
+                  eldrive.eldrive_name, 
+                  eldrive.rotation_speed, 
+                  le_modul.stem_stroke,
+                  eldrive.flange_fittings
+                  FROM 
+                  public.eldrive, 
+                  public.le_to_eldrive, 
+                  public.le_modul
+                  WHERE 
+                  le_to_eldrive.eldrive_id = eldrive.eldrive_id AND
+                  le_modul.le_modul_id = le_to_eldrive.le_module_id AND
+                  le_modul.stem_stroke >=", stem_stroke, "AND
+                  le_modul.force_min <", stem_force ,"AND
+                  le_modul.force_max >=", stem_force, "AND
+                  eldrive.rotation_speed_for_le_modul >= ", speed, ";")
+    x <- dbGetQuery(con,str)
+    x <- x[which(x$stem_stroke == min(x$stem_stroke)),]
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    return(x) 
+  } else if (type == "SAR") {
+    str <- paste0("SELECT 
+                  eldrive.eldrive_name,
+                  eldrive.rotation_speed,
+                  eldrive.flange_fittings
+                  FROM
+                  public.eldrive
+                  WHERE
+                  eldrive.eldrive_id < 58 AND
+                  eldrive.torque_min <= ", torque," AND
+                  eldrive.torque_max >= ", torque,"AND
+                  eldrive.rotation_speed >= ", nesessary_number_of_rotations, ";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    return(x)
+  } else if (type == "SARI") {
+    str <- paste0("SELECT 
+                   eldrive.eldrive_name,
+                   eldrive.rotation_speed,
+                   eldrive.flange_fittings
+                   FROM
+                   public.eldrive
+                   WHERE
+                   eldrive.eldrive_id >= 58 AND
+                   eldrive.torque_min <= ", torque," AND
+                   eldrive.torque_max >= ", torque,"AND
+                   eldrive.rotation_speed >= ", nesessary_number_of_rotations, ";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    return(x)
   }
 }
 
