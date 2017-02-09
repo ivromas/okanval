@@ -38,9 +38,6 @@
 # coding UTF-8
 # 
 
-Sys.setlocale('LC_ALL', 'Russian')
-
-
 
 output$details_and_materials <- 
   renderUI({
@@ -76,8 +73,6 @@ output$details_and_overlays <-
     }
   })
 
-output$rv_draw_numb_disp <-
-  renderText({paste0(input$rv_drawing_number,"-XX")})
 
 output$qa_table <-
   renderGvis({
