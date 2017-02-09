@@ -56,7 +56,7 @@ rm(list = ls())
 ### Set soruce file adress ####
 #_________________________________________________________________________________________________________________________________________________
 current_folder <- "c:/_IR_F/okanval/"
-# current_folder <- "C:/OkanVal/okanval_current_script/"
+# current_folder <- "C:/OkanVal/okanval-master/"
 func_folder <- paste0(current_folder,file.path("func", "get_methods.R"))
 conf_folder <- paste0(current_folder,"server/conf/config.R")
 login_folder <- paste0(current_folder,"server/Login.R")
@@ -395,16 +395,16 @@ server <- function(input, output, session) {
     })
   
   output$selected_valve_text_output <-
-    renderUI({
-      
+    renderUI({ 
       if (SELECTED_VALVE() == "Задвижка клиновая") {
         str <- paste0("Выбрана ",tolower(SELECTED_VALVE()))
       } else{
         str <- paste0("Выбран ",tolower(SELECTED_VALVE()))
       }
-      headerPanel(tags$div(
+      headerPanel(tags$div( id = "header_panel_vale",
         HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
       ))
+    
     })
   
   #_________________________________________________________________________________________________________________________________________________
@@ -636,7 +636,7 @@ server <- function(input, output, session) {
     # adding safety factor to force
     stem_force <- input$stem_force * safety_factor
     
-    if ((input$LE_module == TRUE)) {
+    if ((input$LE_module == TRUE && input$el_drive_type == "SAR")) {
       # speed in [mm per minute]
       speed <- stem_stroke / close_time
       x <- get_eldrive(con, type = "LE + SAR", speed = speed, stem_stroke = stem_stroke, stem_force = stem_force)
@@ -652,9 +652,9 @@ server <- function(input, output, session) {
       # частота вращения приводного вала
       nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
       # Пределы регулирования муфты ограничения кутящего момента
-      torque <- stem_force * stem_diameter / 2 * (nesessary_number_of_rotations * thread_pitch / 
+      torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                      (pi *  stem_diameter) + 0.144) / 1000
-      torque <- round(torque) %>% as.integer()
+      torque <- round_any(torque,10, ceiling) %>% as.integer()
       
       x <- get_eldrive(con, type = input$el_drive_type, stem_stroke = stem_stroke, torque = torque, 
                        nesessary_number_of_rotations = nesessary_number_of_rotations)
@@ -666,8 +666,10 @@ server <- function(input, output, session) {
   reactive_get_el_drive_full_name <- reactive({
     
     x <- reactive_get_el_drive()
-    
     if ( nrow(x) == 0) {
+      str <- paste0("Введены невалидные исходные параметры")
+      
+    } else if ( !is.data.frame(x) ) {
       str <- paste0("Введены невалидные исходные параметры")
       
     } else {
@@ -677,14 +679,8 @@ server <- function(input, output, session) {
       } else {
         number <- "G"
       }
-      # LE module dependencies
-      if (input$LE_module == FALSE) {
-        str_part1 <- paste0(x$flange_fittings, "A")
-        str_part_last <- ""
-      } else {
-        str_part1 <- paste0(x$flange_fittings, "LE")
-        str_part_last <- paste0("+", x$modul_type)
-      }
+      
+
 
       if (input$limit_switches_type == "Одиночные" && input$intermediate_position_switches_type == "Сдвоенные") {
         str_part2 <- paste0("6",number,"-9.3",number,"-DUO")
@@ -702,12 +698,29 @@ server <- function(input, output, session) {
 
       
       if (input$el_drive_type == "SAR") {
-        str_part3 <- paste0("21/4-S105-11-IP67-KS-TP104/",str_part_add_3)
+
+        if (input$position_sensor == "Токовый(RWG)") {
+          position_sensor <- "21.4/4"
+          } else {
+          position_sensor <- "12.E"
+          }
+        
+        str_part3 <- paste0(position_sensor, "-S105-11-IP67-KS-TP104/",str_part_add_3)
       } else if (input$el_drive_type == "SARI") {
+
         str_part3 <- paste0("12.E-SH-148-IP68-KSG-TPA00R0AE-0A0-000")
       }
       
-      str <- paste0("Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50*3", "-", x$rotation_speed, "-", 
+      # LE module dependencies
+      if (input$LE_module == TRUE && input$el_drive_type == "SAR") {
+        str_part1 <- paste0(x$flange_fittings, "LE")
+        str_part_last <- paste0("+", x$modul_type)
+      } else {
+        str_part1 <- paste0(x$flange_fittings, "(A)")
+        str_part_last <- ""
+      }
+      
+      str <- paste0("Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
                     "10.1-XX-",str_part2,"-",str_part3,str_part_last )
     }
     return(str)
@@ -761,9 +774,9 @@ server <- function(input, output, session) {
   output$eldrive_param <- 
     renderUI({
       fluidPage(
-        numericInput("close_time","Время закрытия [сек]" ,value = 30, min = 5, max = 500, step = 5, width = "100%"),
-        numericInput("stem_stroke", "Ход штока [мм]",value = 10, min = 10, max = 800, step = 10, width = "100%"),
-        numericInput("stem_force", "Максимальное усилие на штоке [Н]",value = 3400, min = 3400, max = 144000, 
+        numericInput("close_time","Время закрытия [сек]" ,value = 60, min = 5, max = 500, step = 5, width = "100%"),
+        numericInput("stem_stroke", "Ход штока [мм]",value = 10, min = 10, max = 800, step = 100, width = "100%"),
+        numericInput("stem_force", "Максимальное усилие на штоке [Н]",value = 3400, min = 5000, max = 144000, 
                      step = 500, width = "100%")
       )
     })
@@ -779,9 +792,9 @@ server <- function(input, output, session) {
     renderUI({
       if (input$LE_module == FALSE || input$el_drive_type == "SARI") {
         fluidPage(
-          numericInput("thread_pitch", "Шаг резьбы [мм]",value = 5, min = 1, max = 15, width = "100%"),
-          numericInput("stem_diameter", "Диаметр штока [мм]",value = 12, min = 12, max = 800, width = "100%"),
-          numericInput("multithread", "Многозаходность",value = 1, min = 1, max = 5, width = "100%")
+          numericInput("thread_pitch", "Шаг резьбы [мм]",value = 8, min = 1, max = 15, width = "100%", step = 0.1),
+          numericInput("stem_diameter", "Диаметр штока [мм]",value = 20, min = 12, max = 800, width = "100%", step = 0.1),
+          numericInput("multithread", "Многозаходность",value = 2, min = 1, max = 3, width = "100%")
         )
       }
     })
@@ -800,7 +813,13 @@ server <- function(input, output, session) {
         selectInput("intermediate_position_switches_type", label = h5("Тип промежуточных выключателей"), 
                     choices = c("Одиночные", "Сдвоенные"), 
                     selected = 1,
-                    width = "100%")
+                    width = "100%"),
+        if (input$el_drive_type == "SAR") {
+          selectInput("position_sensor", label = h5("Датчик положения"), 
+                      choices = c("Токовый(RWG)", "Потенциометр"), 
+                      selected = 1,
+                      width = "100%")
+        }
       )
     })
   
@@ -808,11 +827,11 @@ server <- function(input, output, session) {
 #_________________________________________________________________________________________________________________________________________________
 ### Shiny App ####
 #_________________________________________________________________________________________________________________________________________________
+# 
 # options(shiny.port = 7775)
 # options(shiny.host = "192.168.1.157")
 # 
 # options(shiny.port = 6545)
-# options(shiny.host = "192.168.1.59")
-# 
+# options(shiny.host = "192.168.1.59") 
 shinyApp(ui, server)
 

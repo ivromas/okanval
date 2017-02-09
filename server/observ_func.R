@@ -34,9 +34,9 @@
 
 # coding UTF-8
 
-observe({
-  toggle("main_menu"
-         )}, suspended = FALSE)
+# observe({
+#   toggle("main_menu"
+#          )}, suspended = FALSE)
 
 observe({
   if (USER$Logged == TRUE) {
@@ -56,50 +56,79 @@ observe({if(input$select_valve != "Кран") {
 }
 })
 
-observeEvent(input$close_time, {
-  if (input$close_time < 5) {
-    updateNumericInput(session, "close_time", value = 5)
-  } else if (input$close_time > 500) {
-    updateNumericInput(session, "close_time", value = 500)
-  }
-})
+observeEvent(input$close_time,
+             shinyjs::delay(1000,
+                            if (is.na(input$close_time) || !is.numeric(input$close_time) ) {
+                              updateNumericInput(session, "close_time", value = 5)
+                            } else if (input$close_time < 5) {
+                              updateNumericInput(session, "close_time", value = 5)
+                            } else if (input$close_time > 500) {
+                              updateNumericInput(session, "close_time", value = 500)
+                            }
+  )
+)
 
-observeEvent(input$stem_stroke, {
-  if (input$stem_stroke < 10) {
-    updateNumericInput(session, "stem_stroke", value = 10)
-  } else if (input$stem_stroke > 800) {
-    updateNumericInput(session, "stem_stroke", value = 800)
-  }
-})
+observeEvent(input$stem_stroke,
+             shinyjs::delay(1000,
+                            if (is.na(input$stem_stroke || !is.numeric(input$stem_stroke))) {
+                              updateNumericInput(session, "stem_stroke", value = 10)
+                            } else if (input$stem_stroke < 10) {
+                              updateNumericInput(session, "stem_stroke", value = 10)
+                            } else if (input$stem_stroke > 800) {
+                              updateNumericInput(session, "stem_stroke", value = 800)
+                            }
+  )
+)
 
-observeEvent(input$stem_force, {
-  if (input$stem_force < 3400) {
-    updateNumericInput(session, "stem_force", value = 3400)
-  } else if (input$stem_force > 144000) {
-    updateNumericInput(session, "stem_force", value = 144000)
-  }
-})
+observeEvent(input$stem_force,
+             shinyjs::delay(1000,
+                            if (is.na(input$stem_force || !is.numeric(input$stem_force))) {
+                              updateNumericInput(session, "stem_force", value = 3400)
+                            } else if (input$stem_force < 3400) {
+                              updateNumericInput(session, "stem_force", value = 3400)
+                            } else if (input$stem_force > 144000) {
+                              updateNumericInput(session, "stem_force", value = 144000)
+                            }
+                          )
+)
 
-observeEvent(input$thread_pitch, {
-  if (input$thread_pitch < 1) {
-    updateNumericInput(session, "thread_pitch", value = 1)
-  } else if (input$thread_pitch > 15) {
-    updateNumericInput(session, "thread_pitch", value = 15)
-  }
-})
+observeEvent(input$thread_pitch,
+             shinyjs::delay(1000,
+                            if (is.na(input$thread_pitch || !is.numeric(input$thread_pitch))) {
+                              updateNumericInput(session, "thread_pitch", value = 1)
+                            } else if (input$thread_pitch < 1) {
+                              updateNumericInput(session, "thread_pitch", value = 1)
+                            } else if (input$thread_pitch > 15) {
+                              updateNumericInput(session, "thread_pitch", value = 15)
+                            }
+             )
+)
 
-observeEvent(input$stem_diameter, {
-  if (input$stem_diameter < 12) {
-    updateNumericInput(session, "stem_diameter", value = 12)
-  } else if (input$stem_diameter > 800) {
-    updateNumericInput(session, "stem_diameter", value = 800)
-  }
-})
+observeEvent(input$stem_diameter, 
+             shinyjs::delay(1000,
+                            if (is.na(input$stem_diameter) || !is.numeric(input$stem_diameter)) {
+                              updateNumericInput(session, "stem_diameter", value = 12)
+                            } else if (input$stem_diameter < 12) {
+                              updateNumericInput(session, "stem_diameter", value = 12)
+                            } else if (input$stem_diameter > 800) {
+                              updateNumericInput(session, "stem_diameter", value = 800)
+                            }
+             )
+)
 
-observeEvent(input$multithread, {
-  if (input$multithread < 1) {
-    updateNumericInput(session, "multithread", value = 1)
-  } else if (input$multithread > 5) {
-    updateNumericInput(session, "multithread", value = 5)
-  }
-})
+observeEvent(input$multithread,
+             shinyjs::delay(1000,
+                            if (is.na(input$multithread || !is.numeric(input$multithread))) {
+                              updateNumericInput(session, "multithread", value = 1)
+                            } else if (input$multithread < 1) {
+                              updateNumericInput(session, "multithread", value = 1)
+                            } else if (input$multithread > 5) {
+                              updateNumericInput(session, "multithread", value = 3)
+                            }
+             )
+)
+
+# observe(input$el_drive_type,
+#              {
+#                updateCheckboxInput(session, "LE", value = FALSE)
+#              })
