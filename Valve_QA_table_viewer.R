@@ -49,7 +49,7 @@ library(shinyjs)
 library(ReporteRs)
 
 rm(list = ls())
-
+# Sys.setlocale("LC_CTYPE", "en_US.UTF-8") 
 current_folder <- "c:/_IR_F/okanval/"
 # current_folder <- "C:/OkanVal/okanval_current_script/"
 func_folder <- paste0(current_folder,file.path("func", "get_methods.R"))
@@ -225,7 +225,8 @@ ui <- dashboardPage(
 ### Shiny Server ####
 #_________________________________________________________________________________________________________________________________________________
 server <- function(input, output, session) {
-
+  con <- okan_db_connect()
+  
   source(login_folder,  local = TRUE)
   source(observ_folder, local = TRUE)
   source(reactive_qa_folder, encoding = 'UTF-8',local = TRUE)
@@ -233,13 +234,107 @@ server <- function(input, output, session) {
   source(reactive_eldrive_folder,encoding = 'UTF-8',local = TRUE)
   source(reactive_ui_eldrive_folder,encoding = 'UTF-8',local = TRUE)
   # source('C:/_IR_F/okanval/server/eldrive/eldrive_reactive_ui.R', encoding = 'UTF-8')
-  con <- okan_db_connect()
+  
   electric_drive_print_text <- eventReactive(
     input$select_el_drive_btn, reactive_get_el_drive_full_name()
     )
-
+  
+  
+  SELECTED_VALVE <- reactive({
+    valve_general <- input$select_valve
+    str <- ""
+    if (valve_general == "Задвижка" || valve_general == "Затвор" || valve_general == "Кран" ||
+        valve_general == "Клапан обратный") {
+      return(input$select_valve_full)
+    } else if (valve_general == "Клапан запорный") {
+      if (input$bellow == TRUE)
+      {
+        valve_bellow_id <- 1
+      } else {
+        valve_bellow_id <- 2
+      }
+      
+      if (input$cone == TRUE) {
+        vale_type_by_socet <- 1
+      } else {
+        vale_type_by_socet <- 2
+      }
+      str <- paste0("SELECT
+                    valve.valve_name
+                    FROM 
+                    public.valve, 
+                    public.valve_bellow_type, 
+                    public.valve_id_to_socet, 
+                    public.valve_to_bellow, 
+                    public.valve_type
+                    WHERE 
+                    valve_bellow_type.valve_bellow_id = valve_to_bellow.valve_bellow_id AND
+                    valve_id_to_socet.valve_id = valve.valve_id AND
+                    valve_to_bellow.valve_id = valve.valve_id AND
+                    valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet AND
+                    valve_bellow_type.valve_bellow_id =", valve_bellow_id ," AND 
+                    valve_type.valve_type_by_socet =" ,vale_type_by_socet ,"AND
+                    valve.valve_id BETWEEN 14 AND 17;")
+      x <- dbGetQuery(con,str)
+      Encoding(x$valve_name) <- "UTF-8"
+      return(x$valve_name)
+      
+    } else if (valve_general == "Клапан регулирующий") {
+      if (input$bellow == TRUE)
+      {
+        valve_bellow_id <- 1
+      } else {
+        valve_bellow_id <- 2
+      }
+      
+      if (input$cone == TRUE) {
+        vale_type_by_socet <- 1
+      } else {
+        vale_type_by_socet <- 2
+      }
+      
+      if (input$plug == TRUE) {
+        plug_type_id <- 1
+      } else {
+        plug_type_id <- 2
+      }
+      str <- paste0("SELECT 
+                    valve.valve_name
+                    FROM 
+                    public.valve, 
+                    public.valve_to_bellow, 
+                    public.valve_to_plug, 
+                    public.valve_type, 
+                    public.valve_id_to_socet, 
+                    public.valve_bellow_type, 
+                    public.valve_plug_type
+                    WHERE 
+                    valve_to_bellow.valve_bellow_id = valve_bellow_type.valve_bellow_id AND
+                    valve_to_bellow.valve_id = valve.valve_id AND
+                    valve_to_plug.valve_id = valve.valve_id AND
+                    valve_id_to_socet.valve_id = valve.valve_id AND
+                    valve_id_to_socet.valve_type_by_socet = valve_type.valve_type_by_socet AND
+                    valve_plug_type.plug_type_id = valve_to_plug.plug_type_id AND
+                    valve.valve_id <= 8 AND
+                    valve_bellow_type.valve_bellow_id =", valve_bellow_id, " AND 
+                    valve_type.valve_type_by_socet =", vale_type_by_socet, " AND
+                    valve_plug_type.plug_type_id =", plug_type_id, ";
+                    ")
+      x <- dbGetQuery(con,str)
+      Encoding(x$valve_name) <- "UTF-8"
+      return(x$valve_name)
+    }
+  })
   
   reactive_get_header_of_qa_table <- reactive({
+    validate(
+      need(input$material_1 != "", {message = "УКАЖИТЕ МАТЕРИАЛЫ ДЛЯ ДЕТАЛЕЙ ВО ВКЛАДКЕ 'Материалы деталей'"
+      }),
+      need(input$material_2 != "",{shinyjs::disable( "downloadDataDocx")
+        shinyjs::disable( "downloadData")})
+    )
+    shinyjs::enable( "downloadDataDocx")
+    shinyjs::enable( "downloadData")
     code <- reactive_get_valve_code()
     
     x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
@@ -249,6 +344,15 @@ server <- function(input, output, session) {
   
   
   reactive_get_header_of_qa2_table <- reactive({
+    validate(
+      need(input$material_1 != "", {message = "УКАЖИТЕ МАТЕРИАЛЫ ДЛЯ ДЕТАЛЕЙ ВО ВКЛАДКЕ 'Материалы деталей'"
+        }),
+      need(input$material_2 != "",{shinyjs::disable( "downloadDataDocx_qa2")
+        shinyjs::disable( "download_qa2")})
+    )
+    shinyjs::enable( "downloadDataDocx_qa2")
+    shinyjs::enable( "download_qa2")
+    
     code <- reactive_get_valve_code()
     
     x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
@@ -461,14 +565,14 @@ server <- function(input, output, session) {
       }
     })
   
-  
-  
   output$eldrive_print_name <-
     renderUI({
+      if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
       headerPanel(tags$div(
         HTML(paste0("<strong>",'<font face="Bedrock" size="4", color="black">',
                     electric_drive_print_text(),"</font>","</strong>"))
       ))
+      }
     })
   
   output$eldrive_param <- 
