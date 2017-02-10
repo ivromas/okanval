@@ -47,6 +47,7 @@ library(shinythemes)
 library(shinyjs)
 # Sys.setenv(JAVA_HOME="C:\\Program Files\\Java\\jdk1.8.0_121\\jre")
 library(ReporteRs)
+library(shinyBS)
 
 
 rm(list = ls())
@@ -250,7 +251,6 @@ ui <- dashboardPage(
 #_________________________________________________________________________________________________________________________________________________
 server <- function(input, output, session) {
   con <- okan_db_connect()
-  
   #_________________________________________________________________________________________________________________________________________________
   ### Source files ####
   #_________________________________________________________________________________________________________________________________________________
@@ -617,9 +617,134 @@ server <- function(input, output, session) {
   ### Electric drive ####
   #_________________________________________________________________________________________________________________________________________________
   
-  electric_drive_print_text <- eventReactive(
-    input$select_el_drive_btn, reactive_get_el_drive_full_name()
-    )
+  observeEvent(input$select_el_drive_btn, {
+    str <- ""
+    
+    if (is.na(input$close_time) || !is.numeric(input$close_time) ) {
+      
+      str <- paste0(str,"<p>   -времени закрытия</p>")
+      
+    } else if (input$close_time < 5) {
+      
+      str <- paste0(str,"<p>   -времени закрытия</p>")
+      
+    } else if (input$close_time > 500) {
+      
+      str <- paste0(str,"<p>   -времени закрытия</p>")
+      
+    }
+    
+    if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke)) {
+      
+      str <- paste0(str,"<p>   -хода штока</p>")
+      
+    } else if (input$stem_stroke < 10) {
+      
+      str <- paste0(str,"<p>   -хода штока</p>")
+      
+    } else if (input$stem_stroke > 800) {
+      
+      str <- paste0(str,"<p>   -хода штока</p>")
+      
+    }
+    
+    if (is.na(input$stem_force) || !is.numeric(input$stem_force)) {
+      
+      str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
+      
+    } else if (input$stem_force < 3400) {
+      
+      str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
+      
+    } else if (input$stem_force > 144000) {
+      
+      str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
+      
+    }
+    
+    if (input$LE_module == FALSE) {
+      
+      if (is.na(input$thread_pitch) || !is.numeric(input$thread_pitch)) {
+        
+        str <- paste0(str,"<p>   -шага резьбы</p>")
+        
+      } else if (input$thread_pitch < 1) {
+        
+        str <- paste0(str,"<p>   -шага резьбы</p>")
+        
+      } else if (input$thread_pitch > 15) {
+        
+        str <- paste0(str,"<p>   -шага резьбы</p>")
+        
+      } 
+      
+      if (is.na(input$stem_diameter) || !is.numeric(input$stem_diameter)) {
+        
+        str <- paste0(str,"<p>   -диаметра штока</p>")
+        
+      } else if (input$stem_diameter < 12) {
+        
+        str <- paste0(str,"<p>   -диаметра штока</p>")
+        
+      } else if (input$stem_diameter > 800) {
+        
+        str <- paste0(str,"<p>   -диаметра штока</p>")
+        
+      } 
+      
+      if (is.na(input$multithread) || !is.numeric(input$multithread)) {
+        
+        str <- paste0(str,"<p>   -многозаходиности</p>")
+        
+      } else if (input$multithread < 1) {
+        
+        str <- paste0(str,"<p>   -многозаходиности</p>")
+        
+      } else if (input$multithread > 5) {
+        
+        str <- paste0(str,"<p>   -многозаходиности</p>")
+        
+      }
+    }
+    
+    if (str != "") {
+      
+        str <- paste0('<p><i class="fa fa-times-circle-o fa-spin fa-2x" aria-hidden="true"></i><b>   Ошибка при задании</b></p>',
+                      str)
+        
+        closeAlert(session, "incorrect_param_alert")
+        
+        createAlert(session, "incorrect_param", alertId = "incorrect_param_alert", content = HTML(str),
+                    style = "error", dismiss = FALSE, append = FALSE)
+        
+        electric_drive_print_text <- ""
+        
+        output$eldrive_print_name <-
+          renderUI({
+            if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
+              headerPanel(tags$div(
+                HTML(paste0(""))
+              ))
+            }
+          })
+        
+    } else {
+      closeAlert(session, "incorrect_param_alert")
+      
+      electric_drive_print_text <- reactive_get_el_drive_full_name()
+      
+      output$eldrive_print_name <-
+        renderUI({
+          if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
+            headerPanel(tags$div(
+              HTML(paste0("<strong>",'<font face="Bedrock" size="4", color="black">',
+                          electric_drive_print_text,"</font>","</strong>"))
+            ))
+          }
+        })
+      
+    }
+  })
   
   
   reactive_get_el_drive <- reactive({
@@ -721,7 +846,7 @@ server <- function(input, output, session) {
       }
       
       str <- paste0("Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
-                    "10.1-XX-",str_part2,"-",str_part3,str_part_last )
+                    "10.1-XX-",str_part2,"-",str_part3,str_part_last," ", x$rated_power, " кВт")
     }
     return(str)
   })
@@ -752,7 +877,10 @@ server <- function(input, output, session) {
           column(width = 12,
                  actionButton(inputId = "select_el_drive_btn", label = "Подбор электропривода по заданным параметрам",
                               icon = icon("check-square"))
-          )
+          ),
+          column(width = 4,
+                 bsAlert("incorrect_param")
+                 )
         )
       } else{
         headerPanel(tags$div(
@@ -761,23 +889,21 @@ server <- function(input, output, session) {
       }
     })
   
-  output$eldrive_print_name <-
-    renderUI({
-      if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
-      headerPanel(tags$div(
-        HTML(paste0("<strong>",'<font face="Bedrock" size="4", color="black">',
-                    electric_drive_print_text(),"</font>","</strong>"))
-      ))
-      }
-    })
+  
   
   output$eldrive_param <- 
     renderUI({
       fluidPage(
-        numericInput("close_time","Время закрытия [сек]" ,value = 60, min = 5, max = 500, step = 5, width = "100%"),
-        numericInput("stem_stroke", "Ход штока [мм]",value = 10, min = 10, max = 800, step = 100, width = "100%"),
-        numericInput("stem_force", "Максимальное усилие на штоке [Н]",value = 3400, min = 5000, max = 144000, 
-                     step = 500, width = "100%")
+          numericInput("close_time","Время закрытия [сек]" ,value = 60, min = 5, max = 300, step = 5, width = "100%"),
+          numericInput("stem_stroke", "Ход штока [мм]",value = 10, min = 10, max = 800, step = 100, width = "100%"),
+          numericInput("stem_force", "Максимальное усилие на штоке [Н]",value = 3400, min = 5000, max = 144000, 
+                      step = 500, width = "100%"),
+        bsTooltip(id = "close_time", title = "от 5 до 300 с", 
+                  placement = "left", trigger = "focus"),
+        bsTooltip(id = "stem_stroke", title = "от 10 до 800 мм", 
+                  placement = "left", trigger = "focus"),
+        bsTooltip(id = "stem_force", title = "от 3400 до 144000 Н", 
+                  placement = "left", trigger = "focus")
       )
     })
   
@@ -792,9 +918,17 @@ server <- function(input, output, session) {
     renderUI({
       if (input$LE_module == FALSE || input$el_drive_type == "SARI") {
         fluidPage(
-          numericInput("thread_pitch", "Шаг резьбы [мм]",value = 8, min = 1, max = 15, width = "100%", step = 0.1),
-          numericInput("stem_diameter", "Диаметр штока [мм]",value = 20, min = 12, max = 800, width = "100%", step = 0.1),
-          numericInput("multithread", "Многозаходность",value = 2, min = 1, max = 3, width = "100%")
+                 numericInput("thread_pitch", "Шаг резьбы [мм]",value = 8, min = 1, max = 15,
+                              width = "100%", step = 0.1),
+                 numericInput("stem_diameter", "Диаметр штока [мм]",value = 20, min = 12, max = 800,
+                              width = "100%", step = 0.1),
+                 numericInput("multithread", "Многозаходность",value = 2, min = 1, max = 3, width = "100%"),
+          bsTooltip(id = "thread_pitch", title = "от 1 до 15 мм", 
+                    placement = "left", trigger = "focus"),
+          bsTooltip(id = "stem_diameter", title = "от 12 до 800 мм", 
+                    placement = "left", trigger = "focus"),
+          bsTooltip(id = "multithread", title = "от 1 до 3", 
+                    placement = "left", trigger = "focus")
         )
       }
     })

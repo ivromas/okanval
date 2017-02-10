@@ -33,3 +33,5 @@ vignettes/*.pdf
 *.knit.md
 
 server/conf/
+.Rhistory
+.RData

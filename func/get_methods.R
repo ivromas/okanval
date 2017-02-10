@@ -573,7 +573,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   eldrive.eldrive_name, 
                   eldrive.rotation_speed, 
                   le_modul.stem_stroke,
-                  eldrive.flange_fittings
+                  eldrive.flange_fittings,
+                  eldrive.rated_power
                   FROM 
                   public.eldrive, 
                   public.le_to_eldrive, 
@@ -593,7 +594,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
     str <- paste0("SELECT 
                   eldrive.eldrive_name,
                   eldrive.rotation_speed,
-                  eldrive.flange_fittings
+                  eldrive.flange_fittings,
+                  eldrive.rated_power
                   FROM
                   public.eldrive
                   WHERE
@@ -608,7 +610,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
     str <- paste0("SELECT 
                    eldrive.eldrive_name,
                    eldrive.rotation_speed,
-                   eldrive.flange_fittings
+                   eldrive.flange_fittings,
+                   eldrive.rated_power
                    FROM
                    public.eldrive
                    WHERE
