@@ -51,8 +51,7 @@ library(shinyBS)
 
 
 rm(list = ls())
-# Sys.setlocale("LC_CTYPE", "en_US.UTF-8") 
-# 
+
 #_________________________________________________________________________________________________________________________________________________
 ### Set soruce file adress ####
 #_________________________________________________________________________________________________________________________________________________
@@ -746,12 +745,6 @@ server <- function(input, output, session) {
     }
   })
   
-  
-  # electric_drive_print_text <- eventReactive(
-  #   input$select_el_drive_btn, reactive_get_el_drive_full_name()
-  #   )
-  # 
-  
   reactive_get_el_drive <- reactive({
     
     if (input$bellow == TRUE) {
@@ -851,7 +844,7 @@ server <- function(input, output, session) {
       }
       
       str <- paste0("Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
-                    "10.1-XX-",str_part2,"-",str_part3,str_part_last )
+                    "10.1-XX-",str_part2,"-",str_part3,str_part_last," ", x$rated_power, " кВт")
     }
     return(str)
   })
