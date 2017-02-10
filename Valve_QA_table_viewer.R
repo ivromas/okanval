@@ -745,7 +745,6 @@ server <- function(input, output, session) {
     }
   })
   
-  
   reactive_get_el_drive <- reactive({
     
     if (input$bellow == TRUE) {
