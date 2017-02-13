@@ -47,7 +47,7 @@ output$details_and_materials <-
       Encoding(detail_current) <- "UTF-8"
       material_4_detail <- get_material_list(con, detail_current, SELECTED_VALVE())
       column(6,
-             selectInput(paste0("material_",i), label = paste0(detail_current," ,материал:"),
+             selectInput(paste0("material_",i), label = paste0(detail_current,", материал:"),
                          # selectInput(paste0("material_",i), label = paste0("material_",i),
                          choices = material_4_detail$material_name,
                          selected = 1)
@@ -64,7 +64,7 @@ output$details_and_overlays <-
         Encoding(detail_current) <- "UTF-8"
         material_4_detail <- get_overlay_list(con)
         column(6,
-               selectInput(paste0("overlay_",i), label = paste0(detail_current," ,наплавка:"),
+               selectInput(paste0("overlay_",i), label = paste0(detail_current,", наплавка:"),
                            # selectInput(paste0("material_",i), label = paste0("material_",i),
                            choices = material_4_detail$overlay_type_name,
                            selected = 1)

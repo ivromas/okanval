@@ -661,7 +661,7 @@ server <- function(input, output, session) {
       
     }
     
-    if (input$LE_module == FALSE) {
+    if (input$LE_module == FALSE || length(input$LE_module) == 0) {
       
       if (is.na(input$thread_pitch) || !is.numeric(input$thread_pitch)) {
         
@@ -720,7 +720,8 @@ server <- function(input, output, session) {
         
         output$eldrive_print_name <-
           renderUI({
-            if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
+            if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
+                && input$control_type == "Электропривод") {
               headerPanel(tags$div(
                 HTML(paste0(""))
               ))
@@ -734,7 +735,8 @@ server <- function(input, output, session) {
       
       output$eldrive_print_name <-
         renderUI({
-          if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
+          if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
+              && input$control_type == "Электропривод") {
             headerPanel(tags$div(
               HTML(paste0("<strong>",'<font face="Bedrock" size="4", color="black">',
                           electric_drive_print_text,"</font>","</strong>"))
@@ -781,7 +783,7 @@ server <- function(input, output, session) {
       torque <- round_any(torque,10, ceiling) %>% as.integer()
       
       x <- get_eldrive(con, type = input$el_drive_type, stem_stroke = stem_stroke, torque = torque, 
-                       nesessary_number_of_rotations = nesessary_number_of_rotations)
+                       nesessary_number_of_rotations = nesessary_number_of_rotations) 
       return(x)
     }
   })
@@ -801,9 +803,8 @@ server <- function(input, output, session) {
       if (input$gold_plated_contacts == "Стандартные") {
         number <- ""
       } else {
-        number <- "G"
+        number <- "-G"
       }
-      
 
 
       if (input$limit_switches_type == "Одиночные" && input$intermediate_position_switches_type == "Сдвоенные") {
@@ -821,7 +822,7 @@ server <- function(input, output, session) {
       }
 
       
-      if (input$el_drive_type == "SAR") {
+      if (input$el_drive_type == "SAR" || input$el_drive_type == "SA") {
 
         if (input$position_sensor == "Токовый(RWG)") {
           position_sensor <- "21.4/4"
@@ -829,14 +830,14 @@ server <- function(input, output, session) {
           position_sensor <- "12.E"
           }
         
-        str_part3 <- paste0(position_sensor, "-S105-11-IP67-KS-TP104/",str_part_add_3)
-      } else if (input$el_drive_type == "SARI") {
+        str_part3 <- paste0(position_sensor, "-S105", number,"-11-IP67-KS-TP104/",str_part_add_3)
+      } else if (input$el_drive_type == "SARI" || input$el_drive_type == "SAI") {
 
-        str_part3 <- paste0("12.E-SH-148-IP68-KSG-TPA00R0AE-0A0-000")
+        str_part3 <- paste0("12.E-SH-148", number,"-IP68-KSG-TPA00R0AE-0A0-000")
       }
       
       # LE module dependencies
-      if (input$LE_module == TRUE && input$el_drive_type == "SAR") {
+      if (input$LE_module == TRUE && length(input$LE_module) != 0 && input$el_drive_type == "SAR") {
         str_part1 <- paste0(x$flange_fittings, "LE")
         str_part_last <- paste0("+", x$modul_type)
       } else {
@@ -844,8 +845,8 @@ server <- function(input, output, session) {
         str_part_last <- ""
       }
       
-      str <- paste0("Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
-                    "10.1-XX-",str_part2,"-",str_part3,str_part_last," ", x$rated_power, " кВт")
+      str <- paste0("<b>Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
+                    "10.1-XX-",str_part2,"-",str_part3,str_part_last," ", x$rated_power, " кВт</br>")
     }
     return(str)
   })
@@ -881,7 +882,36 @@ server <- function(input, output, session) {
                  bsAlert("incorrect_param")
                  )
         )
-      } else{
+      } else if (input$select_valve == "Клапан запорный" && input$control_type == "Электропривод") {
+        
+        fluidPage(
+          box(width = 12,
+              background = "light-blue",
+              column(width = 4,
+                     radioButtons(inputId =  "el_drive_type","Тип привода", c("SA", "SAI"))
+              ),
+              column(width = 8, 
+                     htmlOutput("LE")
+              )
+          ),
+          column(width = 4,
+                 htmlOutput("eldrive_param")
+          ),
+          column(width = 4,
+                 htmlOutput("thread")
+          ),
+          column(width = 4, 
+                 htmlOutput("contact_param")
+          ),
+          column(width = 12,
+                 actionButton(inputId = "select_el_drive_btn", label = "Подбор электропривода по заданным параметрам",
+                              icon = icon("check-square"))
+          ),
+          column(width = 4,
+                 bsAlert("incorrect_param")
+          )
+        )
+      } else {
         headerPanel(tags$div(
           HTML(paste0("<strong>",'<font face="Bedrock" size="4">',"Электропривод не требуется","</font>","</strong>"))
         ))
@@ -915,7 +945,7 @@ server <- function(input, output, session) {
   
   output$thread <-
     renderUI({
-      if (input$LE_module == FALSE || input$el_drive_type == "SARI") {
+      if (input$LE_module == FALSE || input$el_drive_type == "SARI" || length(input$LE_module) == 0) {
         fluidPage(
                  numericInput("thread_pitch", "Шаг резьбы [мм]",value = 8, min = 1, max = 15,
                               width = "100%", step = 0.1),
@@ -947,7 +977,7 @@ server <- function(input, output, session) {
                     choices = c("Одиночные", "Сдвоенные"), 
                     selected = 1,
                     width = "100%"),
-        if (input$el_drive_type == "SAR") {
+        if (input$el_drive_type == "SAR"  || input$el_drive_type == "SA" ) {
           selectInput("position_sensor", label = h5("Датчик положения"), 
                       choices = c("Токовый(RWG)", "Потенциометр"), 
                       selected = 1,

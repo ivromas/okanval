@@ -615,13 +615,47 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                    FROM
                    public.eldrive
                    WHERE
-                   eldrive.eldrive_id >= 58 AND
+                   eldrive.eldrive_id BETWEEN 58 AND 113 AND
                    eldrive.torque_min <= ", torque," AND
                    eldrive.torque_max >= ", torque,"AND
                    eldrive.rotation_speed >= ", nesessary_number_of_rotations, ";")
     x <- dbGetQuery(con, str)
     x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
     return(x)
+  } else if (type == "SA") {
+    str <- paste0("SELECT 
+                   eldrive.eldrive_name,
+                  eldrive.rotation_speed,
+                  eldrive.flange_fittings,
+                  eldrive.rated_power
+                  FROM
+                  public.eldrive
+                  WHERE
+                  eldrive.eldrive_id BETWEEN 114 AND 213 AND
+                  eldrive.torque_min <= ", torque," AND
+                  eldrive.torque_max >= ", torque,"AND
+                  eldrive.rotation_speed >= ", nesessary_number_of_rotations, ";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    return(x)
+  } else if (type == "SAI") {
+    str <- paste0("SELECT 
+                   eldrive.eldrive_name,
+                  eldrive.rotation_speed,
+                  eldrive.flange_fittings,
+                  eldrive.rated_power
+                  FROM
+                  public.eldrive
+                  WHERE
+                  eldrive.eldrive_id BETWEEN 214 AND 319 AND
+                  eldrive.torque_min <= ", torque," AND
+                  eldrive.torque_max >= ", torque,"AND
+                  eldrive.rotation_speed >= ", nesessary_number_of_rotations, ";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    return(x)
+  } else {
+    return(NULL)
   }
 }
 
