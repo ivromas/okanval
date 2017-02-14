@@ -566,7 +566,7 @@ get_conncetion_type_info <- function(con, detail_4con_name, type = NaN){
 
 
 get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force=NULL, torque=NULL,
-                        nesessary_number_of_rotations=NULL) {
+                        nesessary_number_of_rotations=NULL, reducer_id=NULL) {
   if (type == "LE + SAR") {
     str <- paste0("SELECT 
                   le_modul.modul_type, 
@@ -638,6 +638,7 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
     x <- dbGetQuery(con, str)
     x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
     return(x)
+    
   } else if (type == "SAI") {
     str <- paste0("SELECT 
                    eldrive.eldrive_name,
@@ -654,8 +655,71 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
     x <- dbGetQuery(con, str)
     x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
     return(x)
+    
+  } else if (type == "GST") {
+    
+    str <- paste0("SELECT
+                  reducer.reducer_id,
+                  reducer.reducer_type,
+                  reducer.gear_attitude,
+                  reducer.reducer_torque_output_nominal_max,
+                  reducer.reducer_con_type,
+                  reducer.reducer_coef_trans
+                  FROM
+                  public.reducer
+                  WHERE
+                  reducer.reducer_id BETWEEN 1 AND 24 AND
+                  reducer.reducer_torque_output_nominal_max >=" , torque,";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$reducer_torque_output_nominal_max == min(x$reducer_torque_output_nominal_max)),]
+    return(x)
+    
+  } else if (type == "GSTI") {
+    
+    str <- paste0("SELECT
+                  reducer.reducer_id,
+                  reducer.reducer_type,
+                  reducer.gear_attitude,
+                  reducer.reducer_torque_output_nominal_max,
+                  reducer.reducer_con_type,
+                  reducer.reducer_coef_trans
+                  FROM
+                  public.reducer
+                  WHERE
+                  reducer.reducer_id BETWEEN 25 AND 36 AND
+                  reducer.reducer_torque_output_nominal_max >=" , torque,";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$reducer_torque_output_nominal_max == min(x$reducer_torque_output_nominal_max)),]
+    return(x)
+    
+  } else if (type == "SA(I) + GST(I)") {
+    str <- paste0("SELECT 
+                   eldrive.eldrive_name,
+                  eldrive.rotation_speed,
+                  eldrive.flange_fittings,
+                  eldrive.rated_power
+                  FROM
+                  public.eldrive, 
+                  public.reducer_to_eldrive, 
+                  public.reducer
+                  WHERE 
+                  reducer_to_eldrive.eldrive_id = eldrive.eldrive_id AND
+                  reducer.reducer_id = reducer_to_eldrive.reducer_id AND
+                  eldrive.torque_min <= ", torque," AND
+                  eldrive.torque_max >= ", torque,"AND
+                  eldrive.rotation_speed >= ", nesessary_number_of_rotations, "AND
+                  reducer.reducer_id =", reducer_id,";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    
+  } else if (type == "SAI + GSTI") {
+    
+    
+    
   } else {
+    
     return(NULL)
+    
   }
 }
 
