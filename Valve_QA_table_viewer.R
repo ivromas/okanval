@@ -394,7 +394,8 @@ server <- function(input, output, session) {
     })
   
   output$selected_valve_text_output <-
-    renderUI({ 
+    renderUI({
+      
       if (SELECTED_VALVE() == "Задвижка клиновая") {
         str <- paste0("Выбрана ",tolower(SELECTED_VALVE()))
       } else{
@@ -625,11 +626,14 @@ server <- function(input, output, session) {
     } else {
       safety_factor <- 1.2
     }
+    reducer_checkbox <- input$reducer_checkbox
     
     if (input$el_drive_type == "SA") {
       torque_lower_lim <- 60
     } else if (input$el_drive_type == "SAI") {
       torque_lower_lim <- 500
+    } else {
+      reducer_checkbox <- NULL
     }
     
     stem_force <- input$stem_force * safety_factor
@@ -647,7 +651,7 @@ server <- function(input, output, session) {
     
     
     
-    if (length(input$reducer_checkbox) != 0) {
+    if (length(reducer_checkbox) != 0) {
       
       closeAlert(session, "reducer_corretion_alert")
       
@@ -837,6 +841,8 @@ server <- function(input, output, session) {
       # частота вращения приводного вала
       nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
       
+      nesessary_number_of_rotations <- round_any(nesessary_number_of_rotations, 1, ceiling) %>% as.integer()
+      
       torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                     (pi *  stem_diameter) + 0.144) / 1000
       torque <- round_any(torque,10, ceiling) %>% as.integer()
@@ -856,7 +862,10 @@ server <- function(input, output, session) {
         
         reducer_list$torque_to_eldrive <- round_any(reducer_list$torque_to_eldrive, 1, ceiling) %>% as.integer()
         
-        reducer_list$nesessary_number_of_rotations <- round(nesessary_number_of_rotations * reducer_list$gear_attitude)
+        reducer_list$nesessary_number_of_rotations <- nesessary_number_of_rotations * reducer_list$gear_attitude
+        
+        reducer_list$nesessary_number_of_rotations <- round_any(reducer_list$nesessary_number_of_rotations,
+                                                                1, ceiling) %>% as.integer()
         
       }
       
@@ -890,6 +899,7 @@ server <- function(input, output, session) {
       multithread <- input$multithread
       # частота вращения приводного вала
       nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
+      nesessary_number_of_rotations <- round_any(nesessary_number_of_rotations, 1, ceiling) %>% as.integer()
       # Пределы регулирования муфты ограничения кутящего момента
       torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                      (pi *  stem_diameter) + 0.144) / 1000
@@ -1040,7 +1050,8 @@ server <- function(input, output, session) {
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SA", "SAI"))
               ),
               column(width = 8, 
-                     htmlOutput("reducer_checkbox_gr")
+                     htmlOutput("reducer_checkbox_gr"),
+                     htmlOutput("LE")
               )
           ),
           column(width = 4,
@@ -1092,8 +1103,10 @@ server <- function(input, output, session) {
     renderUI({
       if (input$el_drive_type == "SAR") {
         checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE)
+        # hidden(checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       } else {
         hidden( checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE))
+        hidden(checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       }
     })
   
@@ -1105,8 +1118,7 @@ server <- function(input, output, session) {
         hidden(checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       }
     })
-  
-  
+
   output$thread <-
     renderUI({
       if (input$LE_module == FALSE || input$el_drive_type == "SARI" || length(input$LE_module) == 0) {
