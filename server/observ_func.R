@@ -57,15 +57,21 @@ observe({if(input$select_valve != "Кран") {
 })
 
 get_stem_force_boundary <- function() {
+  
   if (input$main_menu == "el_drive" && length(input$main_menu != 0)) {
-    
+
     if (input$bellow == TRUE && length(input$bellow != 0)) {
+      
       safety_factor <- 1.5
+      
     } else {
+      
       safety_factor <- 1.2
+      
     }
-    
+
     L_min <- 1 / 2 / pi + 0.144 / 2 * 12
+    
     stem_force_max_local <- 217000
     stem_force_min_local <- 4000
     # L_max <- 3 * 15.5 / 2 / pi + 0.144 / 2 * 800
@@ -74,33 +80,33 @@ get_stem_force_boundary <- function() {
     } else {
       LE_module <- FALSE
     }
-    
+
     shinyjs::delay(500, {
-      
+
       if (LE_module == TRUE) {
         stem_force_max_local <- 217000
         stem_force_min_local <- 4000
         # print("LE")
-        
+
       } else if (input$reducer_checkbox == TRUE && length(input$reducer_checkbox) != 0 && input$el_drive_type == "SA") {
-        
+
         stem_force_max_local <- 16000 * 1000 / L_min
         stem_force_min_local <- 120 * 1000 / L_min
         # print("gst")
-        
+
       } else if (input$reducer_checkbox == TRUE && length(input$reducer_checkbox) != 0 && input$el_drive_type == "SAI") {
-        
+
         stem_force_max_local <- 16000 * 1000 / L_min
         stem_force_min_local <- 2000 * 1000 / L_min
         # print("gsti")
-        
+
       } else if (input$el_drive_type == "SA") {
-        
+
         stem_force_max_local <- 8000 * 1000 / L_min
         stem_force_min_local <- 40 * 1000 / L_min
         # print("sa")
       } else if (input$el_drive_type == "SAI") {
-        
+
         stem_force_max_local <- 6000 * 1000 / L_min
         stem_force_min_local <- 10 * 1000 / L_min
         # print("sai")
@@ -108,19 +114,21 @@ get_stem_force_boundary <- function() {
         # print("sar")
         stem_force_max_local <- 4000 * 1000 / L_min
         stem_force_min_local <- 15 * 1000 / L_min
-        
+
       } else if (input$el_drive_type == "SARI") {
-        
+
         stem_force_max_local <- 3200 * 1000 / L_min
         stem_force_min_local <- 15 * 1000 / L_min
         # print("sari")
       }
-      
+
       values$stem_force_max <- round(stem_force_max_local / safety_factor)
       values$stem_force_min <- round(stem_force_min_local / safety_factor)
+      values$stem_force_input_max <- round(stem_force_max_local / 1000 / safety_factor, digits = 2)
+      values$stem_force_input_min <- round(stem_force_min_local / 1000 / safety_factor, digits = 2)
       # print(values$stem_force_max)
       # print(values$stem_force_min)
-    }) 
+    })
   }
 }
 
@@ -132,12 +140,11 @@ observeEvent(input$el_drive_type,{
              )
 
 observeEvent(input$reducer_checkbox,{
-             updateCheckboxInput(session, "LE_module", value = FALSE)
              get_stem_force_boundary() }
 )
 
-observeEvent(input$LE_module,
-             get_stem_force_boundary()
+observeEvent(input$LE_module,{
+             get_stem_force_boundary() }
 )
 
 

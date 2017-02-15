@@ -616,55 +616,57 @@ server <- function(input, output, session) {
   #_________________________________________________________________________________________________________________________________________________
   ### Electric drive ####
   #_________________________________________________________________________________________________________________________________________________
-  values <- reactiveValues(stem_force_max = 1, stem_force_min = 0)
+  values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
+                           stem_force_input_min = 3.33, stem_force_input_max = 180.83)
   
   observeEvent(input$select_el_drive_btn, {
+    
     str <- ""
     
+    get_stem_force_boundary()
+
     if (input$bellow == TRUE) {
       safety_factor <- 1.5
     } else {
       safety_factor <- 1.2
     }
-    reducer_checkbox <- input$reducer_checkbox
     
-    if (input$el_drive_type == "SA") {
+ 
+    if (input$el_drive_type == "SA" && input$select_valve == "Задвижка") {
       torque_lower_lim <- 60
-    } else if (input$el_drive_type == "SAI") {
+    } else if (input$el_drive_type == "SAI" && input$select_valve == "Задвижка") {
       torque_lower_lim <- 500
-    } else {
-      reducer_checkbox <- NULL
     }
-    
-    stem_force <- input$stem_force * safety_factor
-    
+
+    stem_stroke <- input$stem_stroke
+    # from кН to H and adding safety factor to force
+    stem_force <- as.integer(input$stem_force * 1000) * safety_factor
     # Шаг резьбы [мм]
     thread_pitch <- input$thread_pitch
     # Диаметр штока [мм]
     stem_diameter <- input$stem_diameter
     # Многозаходность
     multithread <- input$multithread
-    
+    # Пределы регулирования муфты ограничения кутящего момента
     torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                   (pi *  stem_diameter) + 0.144) / 1000
+    
     torque <- round_any(torque,10, ceiling) %>% as.integer()
     
-    
-    
-    if (length(reducer_checkbox) != 0) {
+    if (input$select_valve == "Задвижка") {
       
       closeAlert(session, "reducer_corretion_alert")
       
       if (torque < torque_lower_lim && input$reducer_checkbox == TRUE) {
         
-        updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
+        # updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
         createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
                     content = HTML("<b><p>При данном усилии на штоке редуктор не требуется</b></p>") ,
                     style = "warning", dismiss = FALSE, append = FALSE)
         
       } else if (torque > 6000 && input$reducer_checkbox == FALSE) {
         
-        updateCheckboxInput(session, "reducer_checkbox", value = TRUE)
+        # updateCheckboxInput(session, "reducer_checkbox", value = TRUE)
         createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
                     content = HTML("<b><p>При данном усилии на штоке необходим редуктор</b></p>") ,
                     style = "warning", dismiss = FALSE, append = FALSE)
@@ -674,91 +676,48 @@ server <- function(input, output, session) {
     }
     
     
-    if (is.na(input$close_time) || !is.numeric(input$close_time) ) {
+    if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
       
       str <- paste0(str,"<p>   -времени закрытия</p>")
       
-    } else if (input$close_time < 5) {
-      
-      str <- paste0(str,"<p>   -времени закрытия</p>")
-      
-    } else if (input$close_time > 240) {
-      
-      str <- paste0(str,"<p>   -времени закрытия</p>")
-      
-    }
+    } 
     
-    if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke)) {
+    if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke) ||
+        input$stem_stroke < 10 || input$stem_stroke > 800) {
       
       str <- paste0(str,"<p>   -хода штока</p>")
       
-    } else if (input$stem_stroke < 10) {
-      
-      str <- paste0(str,"<p>   -хода штока</p>")
-      
-    } else if (input$stem_stroke > 800) {
-      
-      str <- paste0(str,"<p>   -хода штока</p>")
-      
-    }
+    } 
     
-    if (is.na(input$stem_force) || !is.numeric(input$stem_force)) {
+    if (is.na(input$stem_force) || !is.numeric(input$stem_force) || stem_force >  values$stem_force_max ||
+        stem_force < values$stem_force_min) {
       
       str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
       
-    } else if (input$stem_force < values$stem_force_min) {
-      
-      str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
-      
-    } else if (input$stem_force > values$stem_force_max) {
-      
-      str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
-      
-    }
+    } 
     
-    if (input$LE_module == FALSE || length(input$LE_module) == 0) {
+    if (input$LE_module == FALSE) {
       
-      if (is.na(input$thread_pitch) || !is.numeric(input$thread_pitch)) {
+      if (is.na(input$thread_pitch) || !is.numeric(input$thread_pitch) || input$thread_pitch < 1 || 
+          input$thread_pitch > 15.5)  {
         
         str <- paste0(str,"<p>   -шага резьбы</p>")
-        
-      } else if (input$thread_pitch < 1) {
-        
-        str <- paste0(str,"<p>   -шага резьбы</p>")
-        
-      } else if (input$thread_pitch > 15.5) {
-        
-        str <- paste0(str,"<p>   -шага резьбы</p>")
-        
-      } 
-      
-      if (is.na(input$stem_diameter) || !is.numeric(input$stem_diameter)) {
-        
-        str <- paste0(str,"<p>   -диаметра штока</p>")
-        
-      } else if (input$stem_diameter < 12) {
-        
-        str <- paste0(str,"<p>   -диаметра штока</p>")
-        
-      } else if (input$stem_diameter > 800) {
-        
-        str <- paste0(str,"<p>   -диаметра штока</p>")
-        
-      } 
-      
-      if (is.na(input$multithread) || !is.numeric(input$multithread)) {
-        
-        str <- paste0(str,"<p>   -многозаходиности</p>")
-        
-      } else if (input$multithread < 1) {
-        
-        str <- paste0(str,"<p>   -многозаходиности</p>")
-        
-      } else if (input$multithread > 3) {
-        
-        str <- paste0(str,"<p>   -многозаходиности</p>")
         
       }
+      
+      if (is.na(input$stem_diameter) || !is.numeric(input$stem_diameter) || input$stem_diameter < 12 || 
+          input$stem_diameter > 800) {
+        
+        str <- paste0(str,"<p>   -диаметра штока</p>")
+        
+      } 
+      
+      if (is.na(input$multithread) || !is.numeric(input$multithread) || input$multithread < 1 || 
+          input$multithread > 3) {
+        
+        str <- paste0(str,"<p>   -многозаходиности</p>")
+        
+      } 
     }
     
     
@@ -773,19 +732,20 @@ server <- function(input, output, session) {
         createAlert(session, "incorrect_param", alertId = "incorrect_param_alert", content = HTML(str),
                     style = "error", dismiss = FALSE, append = FALSE)
         
-        electric_drive_print_text <- ""
-        
-        output$eldrive_print_name <-
-          renderUI({
-            if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
-                && input$control_type == "Электропривод") {
-              headerPanel(tags$div(
-                HTML(paste0(""))
-              ))
-            }
-          })
+        # electric_drive_print_text <- ""
+        # 
+        # output$eldrive_print_name <-
+        #   renderUI({
+        #     if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
+        #         && input$control_type == "Электропривод") {
+        #       headerPanel(tags$div(
+        #         HTML(paste0(""))
+        #       ))
+        #     }
+        #   })
         
     } else {
+      
       closeAlert(session, "incorrect_param_alert")
       
       electric_drive_print_text <- reactive_get_el_drive_full_name()
@@ -812,26 +772,24 @@ server <- function(input, output, session) {
       safety_factor <- 1.2
     }
     
-    # time to mitue value
-    close_time <- input$close_time / 60
-    stem_stroke <- input$stem_stroke
-    # adding safety factor to force
-    stem_force <- input$stem_force * safety_factor
+    
     
     if ((input$LE_module == TRUE && input$el_drive_type == "SAR")) {
       # speed in [mm per minute]
       speed <- stem_stroke / close_time
+      
       x <- get_eldrive(con, type = "LE + SAR", speed = speed, stem_stroke = stem_stroke, stem_force = stem_force)
-      # Encoding(x) <- "UTF-8"
+
       return(x)
-    } else if (input$reducer_checkbox == TRUE && length(input$reducer_checkbox) != 0) {
       
-      if (input$el_drive_type == "SA") {
-        reducer_type = "GST"
-      } else {
-        reducer_type = "GSTI"
-      }
+    } else {
       
+      # time to mitue value
+      close_time <- input$close_time / 60
+      
+      stem_stroke <- input$stem_stroke
+      # from кН to H and adding safety factor to force
+      stem_force <- as.integer(input$stem_force * 1000) * safety_factor
       # Шаг резьбы [мм]
       thread_pitch <- input$thread_pitch
       # Диаметр штока [мм]
@@ -841,76 +799,79 @@ server <- function(input, output, session) {
       # частота вращения приводного вала
       nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
       
-      nesessary_number_of_rotations <- round_any(nesessary_number_of_rotations, 1, ceiling) %>% as.integer()
-      
-      torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
-                                                    (pi *  stem_diameter) + 0.144) / 1000
-      torque <- round_any(torque,10, ceiling) %>% as.integer()
-      
-      reducer_list <- get_eldrive(con, type = reducer_type, torque = torque)
-      
-      if (is.data.frame(reducer_list) && nrow(reducer_list) == 0) {
-        
-        createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
-                    content = HTML("<b><p>Ошибка 1</b></p>") ,
-                    style = "warning", dismiss = FALSE, append = FALSE)
-        return(NULL)
-        
-      } else {
-      
-        reducer_list$torque_to_eldrive <- torque / reducer_list$reducer_coef_trans
-        
-        reducer_list$torque_to_eldrive <- round_any(reducer_list$torque_to_eldrive, 1, ceiling) %>% as.integer()
-        
-        reducer_list$nesessary_number_of_rotations <- nesessary_number_of_rotations * reducer_list$gear_attitude
-        
-        reducer_list$nesessary_number_of_rotations <- round_any(reducer_list$nesessary_number_of_rotations,
-                                                                1, ceiling) %>% as.integer()
-        
-      }
-      
-      for (i in 1:length(reducer_list$reducer_id)) {
-        
-        x <- get_eldrive(con, type = "SA(I) + GST(I)", torque = reducer_list$torque_to_eldrive[i], 
-                         nesessary_number_of_rotations = reducer_list$nesessary_number_of_rotations[i],
-                         reducer_id = reducer_list$reducer_id[i])
-        if (is.data.frame(x) && nrow(x) != 0) {
-          x$reducer_type <- reducer_list$reducer_type[i]
-          x$reducer_gear_ratio <- reducer_list$gear_attitude[i]
-          x$reducer_con_type <- reducer_list$reducer_con_type[i]
-        }
-        
-        if (i == 1 || nrow(full_x_list) == 0) {
-          full_x_list <- x
-        } else {
-          full_x_list <- rbind(full_x_list, x)
-        }
-        
-      }
-      
-      return(full_x_list)
-      
-    }else {
-      # Шаг резьбы [мм]
-      thread_pitch <- input$thread_pitch
-      # Диаметр штока [мм]
-      stem_diameter <- input$stem_diameter
-      # Многозаходность
-      multithread <- input$multithread
-      # частота вращения приводного вала
-      nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
       nesessary_number_of_rotations <- round_any(nesessary_number_of_rotations, 1, ceiling) %>% as.integer()
       # Пределы регулирования муфты ограничения кутящего момента
       torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
-                                                     (pi *  stem_diameter) + 0.144) / 1000
+                                                    (pi *  stem_diameter) + 0.144) / 1000
+      
       torque <- round_any(torque,10, ceiling) %>% as.integer()
       
-      x <- get_eldrive(con, type = input$el_drive_type, stem_stroke = stem_stroke, torque = torque, 
+      if (input$reducer_checkbox == TRUE) {
+      
+        if (input$el_drive_type == "SA") {
+          
+          reducer_type = "GST"
+          
+        } else {
+          
+          reducer_type = "GSTI"
+          
+        }
+        
+        reducer_list <- get_eldrive(con, type = reducer_type, torque = torque)
+        
+        if (is.data.frame(reducer_list) && nrow(reducer_list) == 0) {
+          
+          createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
+                      content = HTML("<b><p>Ошибка 1</b></p>") ,
+                      style = "warning", dismiss = FALSE, append = FALSE)
+          return(NULL)
+          
+        } else {
+        
+          reducer_list$torque_to_eldrive <- torque  / reducer_list$reducer_coef_trans
+          
+          reducer_list$torque_to_eldrive <- round_any(reducer_list$torque_to_eldrive, 1, ceiling) %>% as.integer()
+          
+          reducer_list$nesessary_number_of_rotations <- nesessary_number_of_rotations * reducer_list$gear_attitude
+          
+          reducer_list$nesessary_number_of_rotations <- round_any(reducer_list$nesessary_number_of_rotations,
+                                                                  1, ceiling) %>% as.integer()
+          
+        }
+        
+        for (i in 1:length(reducer_list$reducer_id)) {
+          
+          x <- get_eldrive(con, type = "SA(I) + GST(I)", torque = reducer_list$torque_to_eldrive[i], 
+                           nesessary_number_of_rotations = reducer_list$nesessary_number_of_rotations[i],
+                           reducer_id = reducer_list$reducer_id[i])
+          if (is.data.frame(x) && nrow(x) != 0) {
+            x$reducer_type <- reducer_list$reducer_type[i]
+            x$reducer_gear_ratio <- reducer_list$gear_attitude[i]
+            x$reducer_con_type <- reducer_list$reducer_con_type[i]
+          }
+          
+          if (i == 1 || nrow(full_x_list) == 0) {
+            full_x_list <- x
+          } else {
+            full_x_list <- rbind(full_x_list, x)
+          }
+          
+        }
+        
+        return(full_x_list)
+      
+      } else {
+      
+      
+        x <- get_eldrive(con, type = input$el_drive_type, stem_stroke = stem_stroke, torque = torque, 
                        nesessary_number_of_rotations = nesessary_number_of_rotations)
       
       
-      return(x)
+        return(x)
+      }
     }
+    
   })
   
   
@@ -967,7 +928,6 @@ server <- function(input, output, session) {
         str_part1 <- paste0(x$flange_fittings, "LE")
         str_part_last <- paste0("+", x$modul_type)
       } else if (length(input$reducer_checkbox) != 0 && input$reducer_checkbox == TRUE ) {
-        # str_part1 <- paste0(x$flange_fittings, "LE")
         str_part1 <- paste0(x$flange_fittings, "(B3)")
         str_part_last <- paste0("+", x$reducer_type, "(", x$reducer_gear_ratio, ":1)")
       } else {
@@ -992,7 +952,8 @@ server <- function(input, output, session) {
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SAR", "SARI"))
               ),
               column(width = 8,
-                     htmlOutput("LE")
+                     htmlOutput("LE"),
+                     htmlOutput("reducer_checkbox_gr")
               )
           ),
           column(width = 4,
@@ -1021,7 +982,8 @@ server <- function(input, output, session) {
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SA", "SAI"))
               ),
               column(width = 8, 
-                     htmlOutput("LE")
+                     htmlOutput("LE"),
+                     hidden(htmlOutput("reducer_checkbox_gr"))
               )
           ),
           column(width = 4,
@@ -1081,48 +1043,55 @@ server <- function(input, output, session) {
       }
     })
   
-  
-  
   output$eldrive_param <- 
     renderUI({
       fluidPage(
-          numericInput("close_time","Время закрытия [сек]" ,value = 60, min = 5, max = 300, step = 5, width = "100%"),
-          numericInput("stem_stroke", "Ход штока [мм]",value = 10, min = 10, max = 800, step = 100, width = "100%"),
-          numericInput("stem_force", "Максимальное усилие на штоке [Н]",value = values$stem_force_min,
-                       min = values$stem_force_min, max = values$stem_force_max, step = 500, width = "100%"),
+          numericInput("close_time","Время закрытия [сек]" ,value = 60,
+                       min = 5, max = 300, step = 5, width = "100%"),
+          numericInput("stem_stroke", "Ход штока [мм]",value = 100
+                       , min = 10, max = 800, step = 100, width = "100%"),
         bsTooltip(id = "close_time", title = "от 5 до 240 с", 
                   placement = "left", trigger = "focus"),
         bsTooltip(id = "stem_stroke", title = "от 10 до 800 мм", 
                   placement = "left", trigger = "focus"),
-        bsTooltip(id = "stem_force", title = paste0("от ", values$stem_force_min," до ", values$stem_force_max, " Н"), 
-                  placement = "left", trigger = "focus")
+        htmlOutput("isolated_stem_force")
+        
       )
     })
-  
+      
+  output$isolated_stem_force <- renderUI({
+    verticalLayout(
+      numericInput("stem_force", "Максимальное усилие на штоке [кН]", value = 33,
+                   min = values$stem_force_input_min, max = values$stem_force_input_max,
+                   step = 0.1, width = "100%"),
+      bsTooltip(id = "stem_force",  title = paste0("от ", values$stem_force_input_min," до ", 
+                                                   values$stem_force_input_max, " кН"), 
+                placement = "left", trigger = "focus")
+    )
+  })
   output$LE <- 
     renderUI({
       if (input$el_drive_type == "SAR") {
         checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE)
-        # hidden(checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       } else {
-        hidden( checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE))
-        hidden(checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
+        hidden(checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE))
       }
     })
   
   output$reducer_checkbox_gr <- 
     renderUI({
-      if (input$el_drive_type == "SA" || input$el_drive_type == "SAI") {
-        checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE)
+      if (input$select_valve == "Задвижка") {
+      checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE)
       } else {
-        hidden(checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
+        hidden( checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       }
+      
     })
 
   output$thread <-
     renderUI({
       if (input$LE_module == FALSE || input$el_drive_type == "SARI" || length(input$LE_module) == 0) {
-        fluidPage(
+          fluidPage(
                  numericInput("thread_pitch", "Шаг резьбы [мм]",value = 8, min = 1.0, max = 15.5,
                               width = "100%", step = 0.1),
                  numericInput("stem_diameter", "Диаметр штока [мм]",value = 20, min = 12, max = 800,
