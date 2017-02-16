@@ -574,7 +574,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   eldrive.rotation_speed, 
                   le_modul.stem_stroke,
                   eldrive.flange_fittings,
-                  eldrive.rated_power
+                  eldrive.rated_power,
+                  le_modul.price
                   FROM 
                   public.eldrive, 
                   public.le_to_eldrive, 
@@ -595,7 +596,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   eldrive.eldrive_name,
                   eldrive.rotation_speed,
                   eldrive.flange_fittings,
-                  eldrive.rated_power
+                  eldrive.rated_power,
+                  eldrive.price
                   FROM
                   public.eldrive
                   WHERE
@@ -611,7 +613,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                    eldrive.eldrive_name,
                    eldrive.rotation_speed,
                    eldrive.flange_fittings,
-                   eldrive.rated_power
+                   eldrive.rated_power,
+                   eldrive.price
                    FROM
                    public.eldrive
                    WHERE
@@ -627,7 +630,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                    eldrive.eldrive_name,
                   eldrive.rotation_speed,
                   eldrive.flange_fittings,
-                  eldrive.rated_power
+                  eldrive.rated_power,
+                  eldrive.price
                   FROM
                   public.eldrive
                   WHERE
@@ -644,7 +648,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                    eldrive.eldrive_name,
                   eldrive.rotation_speed,
                   eldrive.flange_fittings,
-                  eldrive.rated_power
+                  eldrive.rated_power,
+                  eldrive.price
                   FROM
                   public.eldrive
                   WHERE
@@ -664,7 +669,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   reducer.gear_attitude,
                   reducer.reducer_torque_output_nominal_max,
                   reducer.reducer_con_type,
-                  reducer.reducer_coef_trans
+                  reducer.reducer_coef_trans,
+                  reducer.price
                   FROM
                   public.reducer
                   WHERE
@@ -682,7 +688,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   reducer.gear_attitude,
                   reducer.reducer_torque_output_nominal_max,
                   reducer.reducer_con_type,
-                  reducer.reducer_coef_trans
+                  reducer.reducer_coef_trans,
+                  reducer.price
                   FROM
                   public.reducer
                   WHERE
@@ -697,7 +704,8 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                    eldrive.eldrive_name,
                   eldrive.rotation_speed,
                   eldrive.flange_fittings,
-                  eldrive.rated_power
+                  eldrive.rated_power,
+                  eldrive.price
                   FROM
                   public.eldrive, 
                   public.reducer_to_eldrive, 
@@ -711,10 +719,6 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   reducer.reducer_id =", reducer_id,";")
     x <- dbGetQuery(con, str)
     x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
-    
-  } else if (type == "SAI + GSTI") {
-    
-    
     
   } else {
     
