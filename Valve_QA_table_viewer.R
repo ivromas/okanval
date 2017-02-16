@@ -33,7 +33,7 @@
 # ************************************************************************
 # 
 # coding UTF-8
-
+Sys.setlocale('LC_ALL','Russian')
 
 library(shiny)
 library(shinydashboard)
@@ -264,91 +264,7 @@ server <- function(input, output, session) {
   #_________________________________________________________________________________________________________________________________________________
   ### General selects ####
   #_________________________________________________________________________________________________________________________________________________
-  SELECTED_VALVE <- reactive({
-    valve_general <- input$select_valve
-    str <- ""
-    if (valve_general == "Задвижка" || valve_general == "Затвор" || valve_general == "Кран" ||
-        valve_general == "Клапан обратный") {
-      return(input$select_valve_full)
-    } else if (valve_general == "Клапан запорный") {
-      if (input$bellow == TRUE)
-      {
-        valve_bellow_id <- 1
-      } else {
-        valve_bellow_id <- 2
-      }
-      
-      if (input$cone == TRUE) {
-        vale_type_by_socet <- 1
-      } else {
-        vale_type_by_socet <- 2
-      }
-      str <- paste0("SELECT
-                    valve.valve_name
-                    FROM 
-                    public.valve, 
-                    public.valve_bellow_type, 
-                    public.valve_id_to_socet, 
-                    public.valve_to_bellow, 
-                    public.valve_type
-                    WHERE 
-                    valve_bellow_type.valve_bellow_id = valve_to_bellow.valve_bellow_id AND
-                    valve_id_to_socet.valve_id = valve.valve_id AND
-                    valve_to_bellow.valve_id = valve.valve_id AND
-                    valve_type.valve_type_by_socet = valve_id_to_socet.valve_type_by_socet AND
-                    valve_bellow_type.valve_bellow_id =", valve_bellow_id ," AND 
-                    valve_type.valve_type_by_socet =" ,vale_type_by_socet ,"AND
-                    valve.valve_id BETWEEN 14 AND 17;")
-      x <- dbGetQuery(con,str)
-      Encoding(x$valve_name) <- "UTF-8"
-      return(x$valve_name)
-      
-    } else if (valve_general == "Клапан регулирующий") {
-      if (input$bellow == TRUE)
-      {
-        valve_bellow_id <- 1
-      } else {
-        valve_bellow_id <- 2
-      }
-      
-      if (input$cone == TRUE) {
-        vale_type_by_socet <- 1
-      } else {
-        vale_type_by_socet <- 2
-      }
-      
-      if (input$plug == TRUE) {
-        plug_type_id <- 1
-      } else {
-        plug_type_id <- 2
-      }
-      str <- paste0("SELECT 
-                    valve.valve_name
-                    FROM 
-                    public.valve, 
-                    public.valve_to_bellow, 
-                    public.valve_to_plug, 
-                    public.valve_type, 
-                    public.valve_id_to_socet, 
-                    public.valve_bellow_type, 
-                    public.valve_plug_type
-                    WHERE 
-                    valve_to_bellow.valve_bellow_id = valve_bellow_type.valve_bellow_id AND
-                    valve_to_bellow.valve_id = valve.valve_id AND
-                    valve_to_plug.valve_id = valve.valve_id AND
-                    valve_id_to_socet.valve_id = valve.valve_id AND
-                    valve_id_to_socet.valve_type_by_socet = valve_type.valve_type_by_socet AND
-                    valve_plug_type.plug_type_id = valve_to_plug.plug_type_id AND
-                    valve.valve_id <= 8 AND
-                    valve_bellow_type.valve_bellow_id =", valve_bellow_id, " AND 
-                    valve_type.valve_type_by_socet =", vale_type_by_socet, " AND
-                    valve_plug_type.plug_type_id =", plug_type_id, ";
-                    ")
-      x <- dbGetQuery(con,str)
-      Encoding(x$valve_name) <- "UTF-8"
-      return(x$valve_name)
-    }
-  })
+  
   
   
   output$dynamic_select_pressure <-
@@ -654,6 +570,8 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       } else {
         
         safety_factor <- input$safety_factor_select %>% as.integer()
+
+        safety_factor <- safety_factor / 100 + 1
         
       }
       
@@ -839,20 +757,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
         createAlert(session, "incorrect_param", alertId = "incorrect_param_alert", content = HTML(str),
                     style = "error", dismiss = FALSE, append = FALSE)
-        
 
-        # electric_drive_print_text <- ""
-        # 
-        # output$eldrive_print_name <-
-        #   renderUI({
-        #     if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
-        #         && input$control_type == "Электропривод") {
-        #       headerPanel(tags$div(
-        #         HTML(paste0(""))
-        #       ))
-        #     }
-        #   })
-        
     } else {
       
       closeAlert(session, "incorrect_param_alert")
@@ -882,10 +787,22 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     } else {
       
       safety_factor <- input$safety_factor_select %>% as.integer()
-      
+      safety_factor <- safety_factor / 100 + 1
+
     }
     
+    # time to mitue value
+    close_time <- input$close_time / 60
     
+    stem_stroke <- input$stem_stroke
+    # from кН to H and adding safety factor to force
+    stem_force <- as.integer(input$stem_force * 1000) * safety_factor
+    # Шаг резьбы [мм]
+    thread_pitch <- input$thread_pitch
+    # Диаметр штока [мм]
+    stem_diameter <- input$stem_diameter
+    # Многозаходность
+    multithread <- input$multithread
     
     if ((input$LE_module == TRUE && input$el_drive_type == "SAR")) {
       # speed in [mm per minute]
@@ -909,6 +826,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       stem_diameter <- input$stem_diameter
       # Многозаходность
       multithread <- input$multithread
+
       # частота вращения приводного вала
       nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
       
@@ -918,6 +836,11 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                                                     (pi *  stem_diameter) + 0.144) / 1000
       
       torque <- round_any(torque,10, ceiling) %>% as.integer()
+      
+      closeAlert(session, alertId = "torque_info_alert")
+      createAlert(session,"torque_info", alertId = "torque_info_alert",
+                  content = HTML(paste0("<b><p>Расчётный момент составляет ",torque," Нм</b></p>")) ,
+                  style = "info", dismiss = FALSE, append = FALSE)
       
       if (input$reducer_checkbox == TRUE) {
       
@@ -1006,8 +929,10 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       if (input$gold_plated_contacts == "Стандартные") {
         number <- ""
+        price_gc <- ""
       } else {
         number <- "-G"
+        price_gc <- " + 200"
       }
 
 
@@ -1057,9 +982,11 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         if (!is.na(x$reducer_price) &&  is.na(x$price)) {
           str_price <- paste0(" [цену данного привода следует уточнить у производителя, цена редуктора ", x$reducer_price, " евро за ед.]")
         } else if (!is.na(x$reducer_price) &&  !is.na(x$price)) {
-          str_price <- paste0(" [цена данного исполнения ",x$price," + ", x$reducer_price, " евро за ед.]")
+
+          str_price <- paste0(" [цена данного исполнения ",x$price, price_gc," + ", x$reducer_price, " евро за ед.]")
         } else if (is.na(x$reducer_price) &&  !is.na(x$price)) {
-          str_price <- paste0(" [цена данного привода ",x$price," евро за ед., цену редуктора следует уточнить у производителя]")
+          str_price <- paste0(" [цена данного привода ",x$price, price_gc," евро за ед., цену редуктора следует уточнить у производителя]")
+
         } else {
           str_price <- paste0(" [цену данного исполнения следует уточнить у производителя]")
         }
@@ -1070,17 +997,20 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
       } else {
         
-        str_price <- paste0(" [цена данного исполнения ",x$price," евро за ед.]")
+
+        str_price <- paste0(" [цена данного исполнения ",x$price, price_gc," евро за ед.]")
         
       }
       
-      str <- paste0("<b>Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
-                    "10.1-XX-",str_part2,"-", str_part3," ", x$rated_power, " кВт ", str_part_last, str_price,"</br>")
+      str <- paste0("<b>Указанным исходным данным соответствует привод ", x$eldrive_name,"-", 
+                    str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", "10.1-XX-",str_part2,"-", str_part3,
+                    " ", x$rated_power, " кВт ", str_part_last,"</br>","<b>", str_price,"</br>")
+
     }
     return(str)
   })
   
-  
+ 
   output$el_drive_select <-
     renderUI({
       if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {
@@ -1207,6 +1137,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       numericInput("stem_force", "Максимальное усилие на штоке [кН]", value = 33,
                    min = values$stem_force_input_min, max = values$stem_force_input_max,
                    step = 0.1, width = "100%"),
+      bsAlert("torque_info"),
       bsTooltip(id = "stem_force",  title = paste0("от ", values$stem_force_input_min," до ", 
                                                    values$stem_force_input_max, " кН"), 
                 placement = "left", trigger = "focus"),

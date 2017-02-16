@@ -1,4 +1,6 @@
 #### Log in module ###
+Sys.setlocale('LC_ALL','Russian')
+
 USER <- reactiveValues(Logged = Logged)
 
 passwdInput <- function(inputId, label) {

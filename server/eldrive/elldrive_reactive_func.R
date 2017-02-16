@@ -36,5 +36,6 @@
 # 
 # 
 # coding UTF-8
-
+#
+Sys.setlocale('LC_ALL','Russian')
 

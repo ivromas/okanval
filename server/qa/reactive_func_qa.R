@@ -36,7 +36,8 @@
 # 
 # 
 # coding UTF-8
-
+#
+Sys.setlocale('LC_ALL','Russian')
 
 reactive_get_oper_table <- reactive({
   # error_str <- "Укажите материалы деталей"

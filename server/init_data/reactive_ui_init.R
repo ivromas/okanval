@@ -37,5 +37,7 @@
 # some dynamic UI part of project (for QA tables)
 # coding UTF-8
 # 
+Sys.setlocale('LC_ALL','Russian')
+
 output$rv_draw_numb_disp <-
   renderText({paste0(input$rv_drawing_number,"-XX")})
