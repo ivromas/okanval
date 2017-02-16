@@ -57,6 +57,7 @@ observe({if(input$select_valve != "Кран") {
 })
 
 
+
 observeEvent(input$select_valve, {
   get_safety_factor()
 })

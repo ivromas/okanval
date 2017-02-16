@@ -719,17 +719,18 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     }
   }
   
-  
+
   observeEvent(input$select_el_drive_btn, {
     
     str <- ""
     
     get_stem_force_boundary()
 
+
     if (input$safety_factor_select == "нет") {
       
-      safety_factor <- 1
-      
+      safety_factor <- 1      
+
     } else {
       
       safety_factor <- input$safety_factor_select %>% as.integer()
@@ -839,6 +840,19 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         createAlert(session, "incorrect_param", alertId = "incorrect_param_alert", content = HTML(str),
                     style = "error", dismiss = FALSE, append = FALSE)
         
+
+        # electric_drive_print_text <- ""
+        # 
+        # output$eldrive_print_name <-
+        #   renderUI({
+        #     if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
+        #         && input$control_type == "Электропривод") {
+        #       headerPanel(tags$div(
+        #         HTML(paste0(""))
+        #       ))
+        #     }
+        #   })
+        
     } else {
       
       closeAlert(session, "incorrect_param_alert")
@@ -885,7 +899,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       # time to mitue value
       close_time <- input$close_time / 60
-      
+
       stem_stroke <- input$stem_stroke
       # from кН to H and adding safety factor to force
       stem_force <- as.integer(input$stem_force * 1000) * safety_factor
@@ -926,6 +940,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                       style = "warning", dismiss = FALSE, append = FALSE)
           x <- data.frame()
           return(x)
+
           
         } else {
         
@@ -950,6 +965,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
             x$reducer_gear_ratio <- reducer_list$gear_attitude[i]
             x$reducer_con_type <- reducer_list$reducer_con_type[i]
             x$reducer_price <- reducer_list$price[i]
+
           }
           
           if (i == 1 || nrow(full_x_list) == 0) {
@@ -1105,6 +1121,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
               column(width = 4,
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SA", "SAI"))
               ),
+
               column(width = 8,
                      htmlOutput("safety_factor"),
                      htmlOutput("LE"),
@@ -1216,15 +1233,14 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     renderUI({
       if (input$select_valve == "Задвижка") {
         verticalLayout(
-        checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE),
-        bsPopover(id = "reducer_checkbox", title = HTML('<font color="black">Обновите значение максимального усилия на штоке</font>'),
+          checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE),
+          bsPopover(id = "reducer_checkbox", title = HTML('<font color="black">Обновите значение максимального усилия на штоке</font>'),
                 content = "", placement = "left", trigger = "focus", options = NULL)
-      )
-
+        )
       } else {
         hidden( checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
-      }
-      
+      }      
+
     })
   
   output$safety_factor <-
@@ -1237,6 +1253,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                     paste0("Рекомендуемый запас по моменту ",values$safety_factor_recomended,"%"),
                     placement = "left", trigger = "focus")
       )
+
     })
 
   output$thread <-
