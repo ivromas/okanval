@@ -1127,7 +1127,8 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                   placement = "left", trigger = "focus"),
         bsTooltip(id = "stem_stroke", title = "от 10 до 800 мм", 
                   placement = "left", trigger = "focus"),
-        htmlOutput("isolated_stem_force")
+        htmlOutput("isolated_stem_force"),
+        bsAlert("torque_info")
         
       )
     })
