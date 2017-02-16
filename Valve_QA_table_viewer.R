@@ -617,7 +617,107 @@ server <- function(input, output, session) {
   ### Electric drive ####
   #_________________________________________________________________________________________________________________________________________________
   values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
-                           stem_force_input_min = 3.33, stem_force_input_max = 180.83)
+                           stem_force_input_min = 3.33, stem_force_input_max = 180.83,
+                           safety_factor_no = "нет", safety_factor_recomended = "20", safety_factor_low = "10" )
+  
+  get_safety_factor <- function() {
+    
+    if (input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный") {
+      
+      if (input$bellow == TRUE && length(input$bellow != 0)) {
+        
+        values[["safety_factor_recomended"]] <- 50
+        values[["safety_factor_low"]] <- 20
+        
+      } else {
+        
+        values[["safety_factor_recomended"]] <- 20
+        values[["safety_factor_low"]] <- 10
+      }
+      
+    } else if (input$select_valve == "Задвижка") {
+      
+      values[["safety_factor_recomended"]] <- 15
+      values[["safety_factor_low"]] <- 5
+    }
+  }
+  
+  get_stem_force_boundary <- function() {
+    
+    if (input$main_menu == "el_drive" && length(input$main_menu != 0)) {
+      
+      if (input$safety_factor_select == "нет") {
+        
+        safety_factor <- 1
+        
+      } else {
+        
+        safety_factor <- input$safety_factor_select %>% as.integer()
+        
+      }
+      
+      L_min <- 1 / 2 / pi + 0.144 / 2 * 12
+      
+      stem_force_max_local <- 217000
+      stem_force_min_local <- 4000
+      # L_max <- 3 * 15.5 / 2 / pi + 0.144 / 2 * 800
+      if (length(input$LE_module) != 0) {
+        LE_module <- input$LE_module
+      } else {
+        LE_module <- FALSE
+      }
+      
+      shinyjs::delay(500, {
+        
+        if (LE_module == TRUE) {
+          stem_force_max_local <- 217000
+          stem_force_min_local <- 4000
+          # print("LE")
+          
+        } else if (input$reducer_checkbox == TRUE && length(input$reducer_checkbox) != 0 && input$el_drive_type == "SA") {
+          
+          stem_force_max_local <- 16000 * 1000 / L_min
+          stem_force_min_local <- 120 * 1000 / L_min
+          # print("gst")
+          
+        } else if (input$reducer_checkbox == TRUE && length(input$reducer_checkbox) != 0 && input$el_drive_type == "SAI") {
+          
+          stem_force_max_local <- 16000 * 1000 / L_min
+          stem_force_min_local <- 2000 * 1000 / L_min
+          # print("gsti")
+          
+        } else if (input$el_drive_type == "SA") {
+          
+          stem_force_max_local <- 8000 * 1000 / L_min
+          stem_force_min_local <- 40 * 1000 / L_min
+          # print("sa")
+        } else if (input$el_drive_type == "SAI") {
+          
+          stem_force_max_local <- 6000 * 1000 / L_min
+          stem_force_min_local <- 10 * 1000 / L_min
+          # print("sai")
+        } else if (input$el_drive_type == "SAR") {
+          # print("sar")
+          stem_force_max_local <- 4000 * 1000 / L_min
+          stem_force_min_local <- 15 * 1000 / L_min
+          
+        } else if (input$el_drive_type == "SARI") {
+          
+          stem_force_max_local <- 3200 * 1000 / L_min
+          stem_force_min_local <- 15 * 1000 / L_min
+          # print("sari")
+        }
+        
+        values$stem_force_max <- round(stem_force_max_local / safety_factor)
+        values$stem_force_min <- round(stem_force_min_local / safety_factor)
+        values$stem_force_input_max <- round(stem_force_max_local / 1000 / safety_factor, digits = 2)
+        values$stem_force_input_min <- round(stem_force_min_local / 1000 / safety_factor, digits = 2)
+        # print(values$stem_force_max)
+        # print(values$stem_force_min)
+      })
+    }
+  }
+  
   
   observeEvent(input$select_el_drive_btn, {
     
@@ -625,10 +725,16 @@ server <- function(input, output, session) {
     
     get_stem_force_boundary()
 
-    if (input$bellow == TRUE) {
-      safety_factor <- 1.5
+    if (input$safety_factor_select == "нет") {
+      
+      safety_factor <- 1
+      
     } else {
-      safety_factor <- 1.2
+      
+      safety_factor <- input$safety_factor_select %>% as.integer()
+      
+      safety_factor <- safety_factor / 100 + 1
+      
     }
     
  
@@ -732,18 +838,6 @@ server <- function(input, output, session) {
         createAlert(session, "incorrect_param", alertId = "incorrect_param_alert", content = HTML(str),
                     style = "error", dismiss = FALSE, append = FALSE)
         
-        # electric_drive_print_text <- ""
-        # 
-        # output$eldrive_print_name <-
-        #   renderUI({
-        #     if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный")
-        #         && input$control_type == "Электропривод") {
-        #       headerPanel(tags$div(
-        #         HTML(paste0(""))
-        #       ))
-        #     }
-        #   })
-        
     } else {
       
       closeAlert(session, "incorrect_param_alert")
@@ -766,10 +860,14 @@ server <- function(input, output, session) {
   
   reactive_get_el_drive <- reactive({
     
-    if (input$bellow == TRUE) {
-      safety_factor <- 1.5
+    if (input$safety_factor_select == "нет") {
+      
+      safety_factor <- 1
+      
     } else {
-      safety_factor <- 1.2
+      
+      safety_factor <- input$safety_factor_select %>% as.integer()
+      
     }
     
     
@@ -825,7 +923,8 @@ server <- function(input, output, session) {
           createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
                       content = HTML("<b><p>Ошибка 1</b></p>") ,
                       style = "warning", dismiss = FALSE, append = FALSE)
-          return(NULL)
+          x <- data.frame()
+          return(x)
           
         } else {
         
@@ -849,6 +948,7 @@ server <- function(input, output, session) {
             x$reducer_type <- reducer_list$reducer_type[i]
             x$reducer_gear_ratio <- reducer_list$gear_attitude[i]
             x$reducer_con_type <- reducer_list$reducer_con_type[i]
+            x$reducer_price <- reducer_list$price[i]
           }
           
           if (i == 1 || nrow(full_x_list) == 0) {
@@ -934,9 +1034,31 @@ server <- function(input, output, session) {
         str_part1 <- paste0(x$flange_fittings, "(A)")
         str_part_last <- ""
       }
+
+      # PRICE 
+      if ("reducer_price" %in% names(x) == TRUE) {
+        if (!is.na(x$reducer_price) &&  is.na(x$price)) {
+          str_price <- paste0(" [цену данного привода следует уточнить у производителя, цена редуктора ", x$reducer_price, " евро за ед.]")
+        } else if (!is.na(x$reducer_price) &&  !is.na(x$price)) {
+          str_price <- paste0(" [цена данного исполнения ",x$price," + ", x$reducer_price, " евро за ед.]")
+        } else if (is.na(x$reducer_price) &&  !is.na(x$price)) {
+          str_price <- paste0(" [цена данного привода ",x$price," евро за ед., цену редуктора следует уточнить у производителя]")
+        } else {
+          str_price <- paste0(" [цену данного исполнения следует уточнить у производителя]")
+        }
+        
+      } else if (is.na(x$price)) {
+        
+        str_price <- paste0(" [цену данного исполнения следует уточнить у производителя]")
+        
+      } else {
+        
+        str_price <- paste0(" [цена данного исполнения ",x$price," евро за ед.]")
+        
+      }
       
       str <- paste0("<b>Указанным исходным данным соответствует привод ", x$eldrive_name,"-", str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", 
-                    "10.1-XX-",str_part2,"-", str_part3," ", x$rated_power, " кВт ", str_part_last,"</br>")
+                    "10.1-XX-",str_part2,"-", str_part3," ", x$rated_power, " кВт ", str_part_last, str_price,"</br>")
     }
     return(str)
   })
@@ -952,6 +1074,7 @@ server <- function(input, output, session) {
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SAR", "SARI"))
               ),
               column(width = 8,
+                     htmlOutput("safety_factor"),
                      htmlOutput("LE"),
                      htmlOutput("reducer_checkbox_gr")
               )
@@ -981,7 +1104,8 @@ server <- function(input, output, session) {
               column(width = 4,
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SA", "SAI"))
               ),
-              column(width = 8, 
+              column(width = 8,
+                     htmlOutput("safety_factor"),
                      htmlOutput("LE"),
                      hidden(htmlOutput("reducer_checkbox_gr"))
               )
@@ -1011,7 +1135,8 @@ server <- function(input, output, session) {
               column(width = 4,
                      radioButtons(inputId =  "el_drive_type","Тип привода", c("SA", "SAI"))
               ),
-              column(width = 8, 
+              column(width = 8,
+                     htmlOutput("safety_factor"),
                      htmlOutput("reducer_checkbox_gr"),
                      htmlOutput("LE")
               )
@@ -1086,6 +1211,18 @@ server <- function(input, output, session) {
         hidden( checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       }
       
+    })
+  
+  output$safety_factor <-
+    renderUI({
+      fluidPage(
+        selectInput("safety_factor_select", label = "Запас по моменту [ % ]", 
+                    choices = c(values$safety_factor_no, values$safety_factor_recomended, values$safety_factor_low),
+                    selected = values$safety_factor_recomended, width = "40%"),
+        bsTooltip(id = "safety_factor_select",title = 
+                    paste0("Рекомендуемый запас по моменту ",values$safety_factor_recomended,"%"),
+                    placement = "left", trigger = "focus")
+      )
     })
 
   output$thread <-
