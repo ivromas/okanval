@@ -37,5 +37,5 @@
 # some dynamic UI part of project (for QA tables)
 # coding UTF-8
 # 
-
+Sys.setlocale('LC_ALL','Russian')
 
