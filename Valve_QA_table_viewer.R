@@ -233,11 +233,11 @@ ui <- dashboardPage(
                     title = h3("Подбор электропривода"), 
                     background = "light-blue",
                     column(width = 12, 
-                      htmlOutput("el_drive_select")
-                          ),
+                           htmlOutput("el_drive_select")
+                    ),
                     column(width = 12,
                            uiOutput("eldrive_print_name")
-                           )
+                    )
                 )
               )
               )
@@ -616,7 +616,8 @@ server <- function(input, output, session) {
   #_________________________________________________________________________________________________________________________________________________
   ### Electric drive ####
   #_________________________________________________________________________________________________________________________________________________
-  values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
+
+values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                            stem_force_input_min = 3.33, stem_force_input_max = 180.83,
                            safety_factor_no = "нет", safety_factor_recomended = "20", safety_factor_low = "10" )
   
@@ -1191,13 +1192,21 @@ server <- function(input, output, session) {
                    step = 0.1, width = "100%"),
       bsTooltip(id = "stem_force",  title = paste0("от ", values$stem_force_input_min," до ", 
                                                    values$stem_force_input_max, " кН"), 
-                placement = "left", trigger = "focus")
+                placement = "left", trigger = "focus"),
+      bsPopover(id = "stem_force",
+                title = HTML(paste0('<font color="black">При изменении типа электропривода и т.п.',
+                             'границы макс/мин значения пересчитываются после подбора электропривода</font>')),
+                content = "", trigger = "focus", options = NULL)
     )
   })
   output$LE <- 
     renderUI({
       if (input$el_drive_type == "SAR") {
-        checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE)
+        verticalLayout(
+          checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE),
+          bsPopover(id = "LE_module", title = HTML('<font color="black">Обновите значение максимального усилия на штоке</font>'),
+                    content = "", placement = "left", trigger = "focus", options = NULL)
+        )
       } else {
         hidden(checkboxInput(inputId = "LE_module", h5("LE-модуль"), value = FALSE))
       }
@@ -1206,7 +1215,12 @@ server <- function(input, output, session) {
   output$reducer_checkbox_gr <- 
     renderUI({
       if (input$select_valve == "Задвижка") {
-      checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE)
+        verticalLayout(
+        checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE),
+        bsPopover(id = "reducer_checkbox", title = HTML('<font color="black">Обновите значение максимального усилия на штоке</font>'),
+                content = "", placement = "left", trigger = "focus", options = NULL)
+      )
+
       } else {
         hidden( checkboxInput(inputId = "reducer_checkbox", h5("Использовать редуктор"), value = FALSE))
       }
