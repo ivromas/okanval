@@ -1006,8 +1006,10 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       if (input$gold_plated_contacts == "Стандартные") {
         number <- ""
+        price_gc <- ""
       } else {
         number <- "-G"
+        price_gc <- " + 200"
       }
 
 
@@ -1057,9 +1059,9 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         if (!is.na(x$reducer_price) &&  is.na(x$price)) {
           str_price <- paste0(" [цену данного привода следует уточнить у производителя, цена редуктора ", x$reducer_price, " евро за ед.]")
         } else if (!is.na(x$reducer_price) &&  !is.na(x$price)) {
-          str_price <- paste0(" [цена данного исполнения ",x$price," + ", x$reducer_price, " евро за ед.]")
+          str_price <- paste0(" [цена данного исполнения ",x$price, price_gc," + ", x$reducer_price, " евро за ед.]")
         } else if (is.na(x$reducer_price) &&  !is.na(x$price)) {
-          str_price <- paste0(" [цена данного привода ",x$price," евро за ед., цену редуктора следует уточнить у производителя]")
+          str_price <- paste0(" [цена данного привода ",x$price, price_gc," евро за ед., цену редуктора следует уточнить у производителя]")
         } else {
           str_price <- paste0(" [цену данного исполнения следует уточнить у производителя]")
         }
@@ -1070,7 +1072,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
       } else {
         
-        str_price <- paste0(" [цена данного исполнения ",x$price," евро за ед.]")
+        str_price <- paste0(" [цена данного исполнения ",x$price, price_gc," евро за ед.]")
         
       }
       
