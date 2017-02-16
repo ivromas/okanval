@@ -33,10 +33,16 @@
 # ************************************************************************
 
 # coding UTF-8
- 
+
+#
+Sys.setlocale('LC_ALL','Russian')
+
+
 # observe({
 #   toggle("main_menu"
 #          )}, suspended = FALSE)
+
+
 
 
 observe({
@@ -56,7 +62,6 @@ observe({if(input$select_valve != "Кран") {
   shinyjs::disable( "download_qa2")
 }
 })
-
 
 observeEvent(input$select_valve, {
   get_safety_factor()
