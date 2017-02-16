@@ -33,14 +33,10 @@
 # ************************************************************************
 
 # coding UTF-8
-#
-Sys.setlocale('LC_ALL','Russian')
-
-
+ 
 # observe({
 #   toggle("main_menu"
 #          )}, suspended = FALSE)
-
 
 
 observe({
@@ -61,6 +57,7 @@ observe({if(input$select_valve != "Кран") {
 }
 })
 
+
 observeEvent(input$select_valve, {
   get_safety_factor()
 })
@@ -72,6 +69,7 @@ observeEvent(input$bellow, {
 observeEvent(input$safety_factor_select,{
   get_safety_factor()
 })
+
 
 observeEvent(input$el_drive,{
              updateCheckboxInput(session, "LE_module", value = FALSE)

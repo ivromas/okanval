@@ -570,6 +570,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       } else {
         
         safety_factor <- input$safety_factor_select %>% as.integer()
+
         safety_factor <- safety_factor / 100 + 1
         
       }
@@ -787,7 +788,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       safety_factor <- input$safety_factor_select %>% as.integer()
       safety_factor <- safety_factor / 100 + 1
-      
+
     }
     
     # time to mitue value
@@ -813,6 +814,19 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
     } else {
       
+      # time to mitue value
+      close_time <- input$close_time / 60
+
+      stem_stroke <- input$stem_stroke
+      # from кН to H and adding safety factor to force
+      stem_force <- as.integer(input$stem_force * 1000) * safety_factor
+      # Шаг резьбы [мм]
+      thread_pitch <- input$thread_pitch
+      # Диаметр штока [мм]
+      stem_diameter <- input$stem_diameter
+      # Многозаходность
+      multithread <- input$multithread
+
       # частота вращения приводного вала
       nesessary_number_of_rotations <- stem_stroke / (close_time * thread_pitch * multithread)
       
@@ -968,9 +982,11 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         if (!is.na(x$reducer_price) &&  is.na(x$price)) {
           str_price <- paste0(" [цену данного привода следует уточнить у производителя, цена редуктора ", x$reducer_price, " евро за ед.]")
         } else if (!is.na(x$reducer_price) &&  !is.na(x$price)) {
+
           str_price <- paste0(" [цена данного исполнения ",x$price, price_gc," + ", x$reducer_price, " евро за ед.]")
         } else if (is.na(x$reducer_price) &&  !is.na(x$price)) {
           str_price <- paste0(" [цена данного привода ",x$price, price_gc," евро за ед., цену редуктора следует уточнить у производителя]")
+
         } else {
           str_price <- paste0(" [цену данного исполнения следует уточнить у производителя]")
         }
@@ -981,6 +997,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
       } else {
         
+
         str_price <- paste0(" [цена данного исполнения ",x$price, price_gc," евро за ед.]")
         
       }
@@ -988,6 +1005,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       str <- paste0("<b>Указанным исходным данным соответствует привод ", x$eldrive_name,"-", 
                     str_part1,"-", "380/50/3", "-", x$rotation_speed, "-", "10.1-XX-",str_part2,"-", str_part3,
                     " ", x$rated_power, " кВт ", str_part_last,"</br>","<b>", str_price,"</br>")
+
     }
     return(str)
   })
