@@ -33,6 +33,7 @@
 # ************************************************************************
 
 # coding UTF-8
+
 #
 Sys.setlocale('LC_ALL','Russian')
 
@@ -40,6 +41,7 @@ Sys.setlocale('LC_ALL','Russian')
 # observe({
 #   toggle("main_menu"
 #          )}, suspended = FALSE)
+
 
 
 
@@ -72,6 +74,7 @@ observeEvent(input$bellow, {
 observeEvent(input$safety_factor_select,{
   get_safety_factor()
 })
+
 
 observeEvent(input$el_drive,{
              updateCheckboxInput(session, "LE_module", value = FALSE)
