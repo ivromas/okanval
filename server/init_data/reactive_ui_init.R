@@ -41,3 +41,58 @@ Sys.setlocale('LC_ALL','Russian')
 
 output$rv_draw_numb_disp <-
   renderText({paste0(input$rv_drawing_number,"-XX")})
+output$dynamic_select_pressure <-
+  renderUI({
+    current_qa_type <- input$select_qa_type
+    if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
+      selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
+                  choices = pressure_list$pressure_type[2],
+                  selected = 1,
+                  width = "80%")
+    }else {
+      selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
+                  choices = pressure_list$pressure_type,
+                  selected = 1,
+                  width = "80%")
+    }
+    
+  })
+
+output$dynamic_select_valve <-
+  renderUI({
+    valve_general <- input$select_valve
+    if (valve_general == "Задвижка" || valve_general == "Затвор" || valve_general == "Кран" ||
+        valve_general == "Клапан обратный") {
+      x <- get_valve_list(con, type = "part", valve_general_name = input$select_valve)
+      selectInput("select_valve_full", label = h5("Клапан"),
+                  choices = x$valve_name,
+                  selected = 1,
+                  width = "80%")
+    } else if (valve_general == "Клапан запорный") {
+      fluidPage(
+        checkboxInput("bellow", "C сильфоном", value = FALSE, width = NULL),
+        checkboxInput("cone", "С перех.патрубком", value = FALSE, width = NULL)
+      )
+    } else if (valve_general == "Клапан регулирующий") {
+      fluidPage(
+        checkboxInput("bellow", "C сильфоном", value = FALSE, width = NULL),
+        checkboxInput("cone", "С перех.патрубком", value = FALSE, width = NULL),
+        checkboxInput("plug", "C разгруженным золотником", value = FALSE, width = NULL)
+      )
+    }
+    
+  })
+
+output$selected_valve_text_output <-
+  renderUI({
+    
+    if (SELECTED_VALVE() == "Задвижка клиновая") {
+      str <- paste0("Выбрана ",tolower(SELECTED_VALVE()))
+    } else{
+      str <- paste0("Выбран ",tolower(SELECTED_VALVE()))
+    }
+    headerPanel(tags$div( id = "header_panel_vale",
+                          HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+    ))
+    
+  })

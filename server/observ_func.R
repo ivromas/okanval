@@ -33,17 +33,151 @@
 # ************************************************************************
 
 # coding UTF-8
-
-#
-Sys.setlocale('LC_ALL','Russian')
-
-
+ 
 # observe({
 #   toggle("main_menu"
 #          )}, suspended = FALSE)
-
-
-
+#          
+#          
+observeEvent(input$select_el_drive_btn, {
+  
+  str <- ""
+  
+  get_stem_force_boundary()
+  
+  
+  if (input$safety_factor_select == "нет") {
+    
+    safety_factor <- 1      
+    
+  } else {
+    
+    safety_factor <- input$safety_factor_select %>% as.integer()
+    
+    safety_factor <- safety_factor / 100 + 1
+    
+  }
+  
+  
+  if (input$el_drive_type == "SA" && input$select_valve == "Задвижка") {
+    torque_lower_lim <- 60
+  } else if (input$el_drive_type == "SAI" && input$select_valve == "Задвижка") {
+    torque_lower_lim <- 500
+  }
+  
+  stem_stroke <- input$stem_stroke
+  # from кН to H and adding safety factor to force
+  stem_force <- as.integer(input$stem_force * 1000) * safety_factor
+  # Шаг резьбы [мм]
+  thread_pitch <- input$thread_pitch
+  # Диаметр штока [мм]
+  stem_diameter <- input$stem_diameter
+  # Многозаходность
+  multithread <- input$multithread
+  # Пределы регулирования муфты ограничения кутящего момента
+  torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
+                                                (pi *  stem_diameter) + 0.144) / 1000
+  
+  torque <- round_any(torque,10, ceiling) %>% as.integer()
+  
+  if (input$select_valve == "Задвижка") {
+    
+    closeAlert(session, "reducer_corretion_alert")
+    
+    if (torque < torque_lower_lim && input$reducer_checkbox == TRUE) {
+      
+      # updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
+      createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
+                  content = HTML("<b><p>При данном усилии на штоке редуктор не требуется</b></p>") ,
+                  style = "warning", dismiss = FALSE, append = FALSE)
+      
+    } else if (torque > 6000 && input$reducer_checkbox == FALSE) {
+      
+      # updateCheckboxInput(session, "reducer_checkbox", value = TRUE)
+      createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
+                  content = HTML("<b><p>При данном усилии на штоке необходим редуктор</b></p>") ,
+                  style = "warning", dismiss = FALSE, append = FALSE)
+      
+    }
+    
+  }
+  
+  
+  if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
+    
+    str <- paste0(str,"<p>   -времени закрытия</p>")
+    
+  } 
+  
+  if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke) ||
+      input$stem_stroke < 10 || input$stem_stroke > 800) {
+    
+    str <- paste0(str,"<p>   -хода штока</p>")
+    
+  } 
+  
+  if (is.na(input$stem_force) || !is.numeric(input$stem_force) || stem_force >  values$stem_force_max ||
+      stem_force < values$stem_force_min) {
+    
+    str <- paste0(str,"<p>   -максимального усилия на штоке</p>")
+    
+  } 
+  
+  if (input$LE_module == FALSE) {
+    
+    if (is.na(input$thread_pitch) || !is.numeric(input$thread_pitch) || input$thread_pitch < 1 || 
+        input$thread_pitch > 15.5)  {
+      
+      str <- paste0(str,"<p>   -шага резьбы</p>")
+      
+    }
+    
+    if (is.na(input$stem_diameter) || !is.numeric(input$stem_diameter) || input$stem_diameter < 12 || 
+        input$stem_diameter > 800) {
+      
+      str <- paste0(str,"<p>   -диаметра штока</p>")
+      
+    } 
+    
+    if (is.na(input$multithread) || !is.numeric(input$multithread) || input$multithread < 1 || 
+        input$multithread > 3) {
+      
+      str <- paste0(str,"<p>   -многозаходиности</p>")
+      
+    } 
+  }
+  
+  
+  
+  if (str != "") {
+    
+    str <- paste0('<p><i class="fa fa-times-circle-o fa-spin fa-2x" aria-hidden="true"></i><b>   Ошибка при задании</b></p>',
+                  str)
+    
+    closeAlert(session, "incorrect_param_alert")
+    
+    createAlert(session, "incorrect_param", alertId = "incorrect_param_alert", content = HTML(str),
+                style = "error", dismiss = FALSE, append = FALSE)
+    
+  } else {
+    
+    closeAlert(session, "incorrect_param_alert")
+    
+    electric_drive_print_text <- reactive_get_el_drive_full_name()
+    
+    output$eldrive_print_name <-
+      renderUI({
+        if ((input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный" ||
+             input$select_valve == "Задвижка") && input$control_type == "Электропривод") {
+          headerPanel(tags$div(
+            HTML(paste0("<strong>",'<font face="Bedrock" size="4", color="black">',
+                        electric_drive_print_text,"</font>","</strong>"))
+          ))
+        } 
+      })
+    
+  }
+})
 
 observe({
   if (USER$Logged == TRUE) {
