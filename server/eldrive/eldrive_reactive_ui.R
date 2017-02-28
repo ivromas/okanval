@@ -39,7 +39,6 @@
 # 
 Sys.setlocale('LC_ALL','Russian')
 
-
 output$el_drive_select <-
   renderUI({
     if (input$select_valve == "Клапан регулирующий" && input$control_type == "Электропривод") {

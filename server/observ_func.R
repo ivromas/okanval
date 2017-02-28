@@ -179,7 +179,6 @@ observeEvent(input$select_el_drive_btn, {
   }
 })
 
-
 observe({
   if (USER$Logged == TRUE) {
     shinyjs::useShinyjs()
@@ -197,7 +196,6 @@ observe({if(input$select_valve != "Кран") {
   shinyjs::disable( "download_qa2")
 }
 })
-
 
 observeEvent(input$select_valve, {
   get_safety_factor()

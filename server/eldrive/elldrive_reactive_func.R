@@ -43,6 +43,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                          stem_force_input_min = 3.33, stem_force_input_max = 180.83,
                          safety_factor_no = "нет", safety_factor_recomended = "20", safety_factor_low = "10" )
 
+
 get_safety_factor <- function() {
   
   if (input$select_valve == "Клапан регулирующий" || input$select_valve == "Клапан запорный") {
