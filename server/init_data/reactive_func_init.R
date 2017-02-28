@@ -38,6 +38,7 @@
 # coding UTF-8
 #
 Sys.setlocale('LC_ALL','Russian')
+
 SELECTED_VALVE <- reactive({
   valve_general <- input$select_valve
   str <- ""
