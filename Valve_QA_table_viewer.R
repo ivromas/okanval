@@ -837,7 +837,6 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
       }
       
-      
       if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
         
         str <- paste0(str,"<p>   -времени закрытия</p>")
