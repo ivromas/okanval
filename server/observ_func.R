@@ -33,7 +33,11 @@
 # ************************************************************************
 
 # coding UTF-8
- 
+
+#
+Sys.setlocale('LC_ALL','Russian')
+
+
 # observe({
 #   toggle("main_menu"
 #          )}, suspended = FALSE)
@@ -178,6 +182,8 @@ observeEvent(input$select_el_drive_btn, {
     
   }
 })
+
+
 
 observe({
   if (USER$Logged == TRUE) {

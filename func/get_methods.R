@@ -566,7 +566,7 @@ get_conncetion_type_info <- function(con, detail_4con_name, type = NaN){
 
 
 get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force=NULL, torque=NULL,
-                        nesessary_number_of_rotations=NULL, reducer_id=NULL) {
+                        nesessary_number_of_rotations=NULL, reducer_id=NULL, time=NULL) {
   if (type == "LE + SAR") {
     str <- paste0("SELECT 
                   le_modul.modul_type, 
@@ -719,6 +719,24 @@ get_eldrive <- function(con, type=NULL, speed=NULL, stem_stroke=NULL, stem_force
                   reducer.reducer_id =", reducer_id,";")
     x <- dbGetQuery(con, str)
     x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    
+  } else if (type == "SG") {
+    str <- paste0("SELECT 
+                   eldrive.eldrive_name,
+                  eldrive.rotation_speed,
+                  eldrive.flange_fittings,
+                  eldrive.rated_power,
+                  eldrive.price
+                  FROM
+                  public.eldrive
+                  WHERE
+                  eldrive.eldrive_id BETWEEN 320 AND 342 AND
+                  eldrive.torque_min <= ", torque," AND
+                  eldrive.torque_max >= ", torque,"AND
+                  eldrive.rotation_speed >= ", time, ";")
+    x <- dbGetQuery(con, str)
+    x <- x[which(x$rotation_speed == min(x$rotation_speed)),]
+    return(x)
     
   } else {
     
