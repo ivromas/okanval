@@ -417,5 +417,38 @@ reactive_get_definition_of_designations_for_qa2_file <- reactive({
 })
 
 
+reactive_get_header_of_qa_table <- reactive({
+  validate(
+    need(input$material_1 != "", {message = "УКАЖИТЕ МАТЕРИАЛЫ ДЛЯ ДЕТАЛЕЙ ВО ВКЛАДКЕ 'Материалы деталей'"
+    }),
+    need(input$material_2 != "",{shinyjs::disable( "downloadDataDocx")
+      shinyjs::disable( "downloadData")})
+  )
+  shinyjs::enable( "downloadDataDocx")
+  shinyjs::enable( "downloadData")
+  code <- reactive_get_valve_code()
+  
+  x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
+              , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
+  return(x)
+})
+
+
+reactive_get_header_of_qa2_table <- reactive({
+  validate(
+    need(input$material_1 != "", {message = "УКАЖИТЕ МАТЕРИАЛЫ ДЛЯ ДЕТАЛЕЙ ВО ВКЛАДКЕ 'Материалы деталей'"
+    }),
+    need(input$material_2 != "",{shinyjs::disable( "downloadDataDocx_qa2")
+      shinyjs::disable( "download_qa2")})
+  )
+  shinyjs::enable( "downloadDataDocx_qa2")
+  shinyjs::enable( "download_qa2")
+  
+  code <- reactive_get_valve_code()
+  
+  x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
+              , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
+  return(x)
+})
 
 

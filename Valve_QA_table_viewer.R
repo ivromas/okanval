@@ -254,284 +254,23 @@ server <- function(input, output, session) {
   ### Source files ####
   #_________________________________________________________________________________________________________________________________________________
   source(login_folder,  local = TRUE)
-  source(observ_folder, local = TRUE)
-  source(reactive_qa_func_folder, encoding = 'UTF-8',local = TRUE)
-  source(reactive_qa_ui_folder, encoding = 'UTF-8',local = TRUE)
-  source(reactive_eldrive_func_folder,encoding = 'UTF-8',local = TRUE)
-  source(reactive_eldrive_ui_folder,encoding = 'UTF-8',local = TRUE)
-  source(reactive_init_ui_folder,encoding = 'UTF-8',local = TRUE)
-  source(reactive_init_func_folder,encoding = 'UTF-8',local = TRUE)
+  # source(observ_folder, local = TRUE)
+  eval(parse(observ_folder, encoding="UTF-8"))
   #_________________________________________________________________________________________________________________________________________________
   ### General selects ####
   #_________________________________________________________________________________________________________________________________________________
-  
-  
-  
-  output$dynamic_select_pressure <-
-    renderUI({
-      current_qa_type <- input$select_qa_type
-      if(current_qa_type == "2ВIIIс" || current_qa_type == "3СIIIс"){
-        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
-                    choices = pressure_list$pressure_type[2],
-                    selected = 1,
-                    width = "80%")
-      }else {
-        selectInput("select_pressure", label = h5("Класс давления по ANSI корпуса"),
-                    choices = pressure_list$pressure_type,
-                    selected = 1,
-                    width = "80%")
-      }
-      
-    })
-  
-  output$dynamic_select_valve <-
-    renderUI({
-      valve_general <- input$select_valve
-      if (valve_general == "Задвижка" || valve_general == "Затвор" || valve_general == "Кран" ||
-          valve_general == "Клапан обратный") {
-        x <- get_valve_list(con, type = "part", valve_general_name = input$select_valve)
-        selectInput("select_valve_full", label = h5("Клапан"),
-                    choices = x$valve_name,
-                    selected = 1,
-                    width = "80%")
-      } else if (valve_general == "Клапан запорный") {
-        fluidPage(
-          checkboxInput("bellow", "C сильфоном", value = FALSE, width = NULL),
-          checkboxInput("cone", "С перех.патрубком", value = FALSE, width = NULL)
-        )
-      } else if (valve_general == "Клапан регулирующий") {
-        fluidPage(
-          checkboxInput("bellow", "C сильфоном", value = FALSE, width = NULL),
-          checkboxInput("cone", "С перех.патрубком", value = FALSE, width = NULL),
-          checkboxInput("plug", "C разгруженным золотником", value = FALSE, width = NULL)
-        )
-      }
-      
-    })
-  
-  output$selected_valve_text_output <-
-    renderUI({
-      
-      if (SELECTED_VALVE() == "Задвижка клиновая") {
-        str <- paste0("Выбрана ",tolower(SELECTED_VALVE()))
-      } else{
-        str <- paste0("Выбран ",tolower(SELECTED_VALVE()))
-      }
-      headerPanel(tags$div( id = "header_panel_vale",
-        HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
-      ))
-    
-    })
-  
+  eval(parse(reactive_init_ui_folder, encoding="UTF-8"))
+  eval(parse(reactive_init_func_folder, encoding="UTF-8"))
   #_________________________________________________________________________________________________________________________________________________
   ### QA tables ####
   #_________________________________________________________________________________________________________________________________________________
-  reactive_get_header_of_qa_table <- reactive({
-    validate(
-      need(input$material_1 != "", {message = "УКАЖИТЕ МАТЕРИАЛЫ ДЛЯ ДЕТАЛЕЙ ВО ВКЛАДКЕ 'Материалы деталей'"
-      }),
-      need(input$material_2 != "",{shinyjs::disable( "downloadDataDocx")
-        shinyjs::disable( "downloadData")})
-    )
-    shinyjs::enable( "downloadDataDocx")
-    shinyjs::enable( "downloadData")
-    code <- reactive_get_valve_code()
-    
-    x <- paste0("Таблица контроля качества основных материалов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
-                , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
-    return(x)
-  })
-  
-  
-  reactive_get_header_of_qa2_table <- reactive({
-    validate(
-      need(input$material_1 != "", {message = "УКАЖИТЕ МАТЕРИАЛЫ ДЛЯ ДЕТАЛЕЙ ВО ВКЛАДКЕ 'Материалы деталей'"
-      }),
-      need(input$material_2 != "",{shinyjs::disable( "downloadDataDocx_qa2")
-        shinyjs::disable( "download_qa2")})
-    )
-    shinyjs::enable( "downloadDataDocx_qa2")
-    shinyjs::enable( "download_qa2")
-    
-    code <- reactive_get_valve_code()
-    
-    x <- paste0("Таблица контроля качества сварных швов изделия ", get_valve_input_info(con, SELECTED_VALVE(), type = "type_def")
-                , ", номер чертежа ", code, " СБ, классификационное обозначение ", input$select_qa_type, " по НП-068-05")
-    return(x)
-  })
-  
-  
-  output$qa1_header <- 
-    renderUI({
-      str <- reactive_get_header_of_qa_table()
-      Encoding(str) <- "UTF-8"
-      headerPanel(tags$div(
-        HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
-      ))
-    })
-  
-  output$qa2_header <- 
-    renderUI({
-      if ( SELECTED_VALVE() != "Кран шаровый" ) {
-        str <- reactive_get_header_of_qa2_table()
-        headerPanel(tags$div(
-          HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
-        ))
-      }else{
-        headerPanel(h4("ТБ2 не требуется"))
-      }
-    })
-  
-  output$text <-
-    renderText({
-      HTML(paste0(
-        "<p><b>Обозначения:</b></p>
-        <p>РГК  - радиографический контроль;</p>
-        <p>УЗК  - ультразвуковой контроль;</p>
-        <p>МПД  - магнитопорошковый контроль;</p>
-        <p>+   - контроль производится;</p>
-        <p>-   - контроль не производится;</p>
-        <p>+c  - результаты испытаний подтверждаются сертификатом.</p>",
-        reactive_get_definition_of_designations()),
-        "<p> </p>"
-      )
-    })
-  
-  output$text_qa2 <-
-    renderText({
-      if (SELECTED_VALVE() != "Кран шаровый") {
-        HTML(paste0(
-          "<p><b>Обозначения:</b></p>
-          <p>ВК   - входной контроль;</p>
-          <p>ВиК  - визуальный и измерительный контроль;</p>
-          <p>РГК  - радиографический контроль;</p>
-          <p>УЗК  - ультразвуковой контроль;</p>
-          <p>МПД  - магнитопорошковый контроль;</p>
-          <p>+   - контроль производится;</p>
-          <p>-   - контроль не производится;</p>
-          <p>+c  - результаты испытаний подтверждаются сертификатом;</p>",
-          reactive_get_definition_of_designations_for_qa2()),
-          "<p> </p>"
-        )
-      }
-    })
-  
-  output$download_qa2 <- downloadHandler(
-    filename = function() {
-      paste0('QA2_table_', Sys.Date(), '.csv')
-    },
-    content = function(file) {
-      data <- reactiive_get_welding_and_overaly_table()
-      header <- paste0(reactive_get_header_of_qa2_table(),"\n")
-      bottom <- paste0(
-        "Обозначения:
-        ВК   - входной контроль;
-        ВиК  - визуальный и измерительный контроль;
-        РГК  - радиографический контроль;
-        УЗК  - ультразвуковой контроль;
-        МПД  - магнитопорошковый контроль;
-        +   - контроль производится;
-        +c  - результаты испытаний подтверждаются сертификатом;",
-        "\n",
-        reactive_get_definition_of_designations_for_qa2_file())
-      
-      cat(header, file=file, append = TRUE, sep =";" )
-      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE, quote = TRUE)
-      cat(bottom, file=file, append = TRUE, sep =";" )
-    }
-  )
-  
-  output$downloadData <- downloadHandler(
-    filename = function() {
-      paste0('QA_table_', Sys.Date(), '.csv')
-    },
-    content = function(file) {
-      data <- reactive_get_oper_table()
-      header <- paste0(reactive_get_header_of_qa_table(),"\n")
-      bottom <- paste0(
-        "Обозначения:
-        РГК  - радиографический контроль;
-        УЗК  - ультразвуковой контроль;
-        МПД  - магнитопорошковый контроль;
-        +   - контроль производится;
-        -   - контроль не производится;
-        +c  - результаты испытаний подтверждаются сертификатом;",
-        "\n",
-        reactive_get_definition_of_designations_for_file())
-      cat(header, file=file, append = TRUE, sep =";" )
-      write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
-      cat(bottom, file=file, append = TRUE, sep =";" )
-    }
-  )
-  
-  output$downloadDataDocx <- downloadHandler(
-    filename = function() {
-      paste0('QA_table_', Sys.Date(), '.docx')
-    },
-    content = function(file) {
-      data <- reactive_get_oper_table()
-      parprop <- parProperties(padding = 2)
-      cellprop <- cellProperties( text.direction = "btlr" )
-      data_header <- colnames(data)
-      datadata <- FlexTable(data, header.columns = FALSE) %>% 
-        addHeaderRow( value = c("", "","","Наименование операции"), colspan = c( 1,1,1, 24),
-                      par.properties = parprop, text.properties = textNormal() ) %>% 
-        addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
-      header <- paste0(reactive_get_header_of_qa_table(),"\n")
-      bottom <- paste0(
-        "Обозначения:
-        РГК  - радиографический контроль;
-        УЗК  - ультразвуковой контроль;
-        МПД  - магнитопорошковый контроль;
-        +   - контроль производится;
-        -   - контроль не производится;
-        +c  - результаты испытаний подтверждаются сертификатом;",
-        "\n",
-        reactive_get_definition_of_designations_for_file(),
-        "
-        
-        Настоящую таблицу рассматривать совместно с ОСТ 108.004.10 и комплектом конструкторской документации."
-      )
-      doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
-      writeDoc(doc, file=file )
-    }
-      )
-  output$downloadDataDocx_qa2 <- downloadHandler(
-    filename = function() {
-      paste0('QA2_table_', Sys.Date(), '.docx')
-    },
-    content = function(file) {
-      data <- reactiive_get_welding_and_overaly_table()
-      header <- paste0(reactive_get_header_of_qa2_table(),"\n")
-      bottom <- paste0(
-        "Обозначения:
-ВК   - входной контроль;
-ВиК  - визуальный и измерительный контроль;
-РГК  - радиографический контроль;
-УЗК  - ультразвуковой контроль;
-МПД  - магнитопорошковый контроль;
- +   - контроль производится;
- +c  - результаты испытаний подтверждаются сертификатом;",
-        "\n",
-        reactive_get_definition_of_designations_for_qa2_file(),
-        "
-
-Настоящую таблицу рассматривать совместно с ОСТ 108.004.10 и комплектом конструкторской документации."
-      )
-      cellprop <- cellProperties( text.direction = "btlr" )
-      parprop <- parProperties(padding = 2)
-      data_header <- colnames(data)
-      datadata <- FlexTable(data, header.columns = FALSE) %>% 
-        addHeaderRow( value = c("", "","","","","","Наименование операции"), colspan = c( 1,1,1,1,1,1, 19),
-                      par.properties = parprop, text.properties = textNormal() ) %>% 
-        addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
-      doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
-      writeDoc(doc, file=file )
-    }
-  )
+  eval(parse(reactive_qa_func_folder, encoding="UTF-8"))
+  eval(parse(reactive_qa_ui_folder, encoding="UTF-8"))
   #_________________________________________________________________________________________________________________________________________________
   ### Electric drive ####
   #_________________________________________________________________________________________________________________________________________________
+  eval(parse(reactive_eldrive_func_folder, encoding="UTF-8"))
+  eval(parse(reactive_eldrive_ui_folder, encoding="UTF-8"))
 
 values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                            stem_force_input_min = 3.33, stem_force_input_max = 180.83,
@@ -786,13 +525,16 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       
       if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
+
         
         str <- paste0(str,"<p>   -времени закрытия</p>")
         
+
       } 
       
       if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke) ||
           input$stem_stroke < 10 || input$stem_stroke > 800) {
+
         
         str <- paste0(str,"<p>   -хода штока</p>")
         
@@ -889,9 +631,10 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       torque <- round_any(torque,10, ceiling) %>% as.integer()
       
       if (input$select_valve == "Задвижка") {
-        
+
         closeAlert(session, "reducer_corretion_alert")
         
+
         if (torque < torque_lower_lim && input$reducer_checkbox == TRUE) {
           
           # updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
@@ -1024,7 +767,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
           
           torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                         (pi *  stem_diameter) + 0.144) / 1000
-          
+
           torque <- round_any(torque,10, ceiling) %>% as.integer()
           
         } else {

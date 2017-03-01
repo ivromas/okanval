@@ -73,7 +73,6 @@ output$details_and_overlays <-
     }
   })
 
-
 output$qa_table <-
   renderGvis({
     # TODO add normal progressbar
@@ -107,3 +106,172 @@ output$qa_table2 <-
     }
     # progress$inc(1)
   })
+
+output$qa1_header <- 
+  renderUI({
+    str <- reactive_get_header_of_qa_table()
+    Encoding(str) <- "UTF-8"
+    headerPanel(tags$div(
+      HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+    ))
+  })
+
+output$qa2_header <- 
+  renderUI({
+    if ( SELECTED_VALVE() != "Кран шаровый" ) {
+      str <- reactive_get_header_of_qa2_table()
+      headerPanel(tags$div(
+        HTML(paste0("<strong>",'<font face="Bedrock" size="4">',str,"</font>","</strong>"))
+      ))
+    }else{
+      headerPanel(h4("ТБ2 не требуется"))
+    }
+  })
+
+output$text <-
+  renderText({
+    HTML(paste0(
+      "<p><b>Обозначения:</b></p>
+      <p>РГК  - радиографический контроль;</p>
+      <p>УЗК  - ультразвуковой контроль;</p>
+      <p>МПД  - магнитопорошковый контроль;</p>
+      <p>+   - контроль производится;</p>
+      <p>-   - контроль не производится;</p>
+      <p>+c  - результаты испытаний подтверждаются сертификатом.</p>",
+      reactive_get_definition_of_designations()),
+      "<p> </p>"
+    )
+  })
+
+output$text_qa2 <-
+  renderText({
+    if (SELECTED_VALVE() != "Кран шаровый") {
+      HTML(paste0(
+        "<p><b>Обозначения:</b></p>
+        <p>ВК   - входной контроль;</p>
+        <p>ВиК  - визуальный и измерительный контроль;</p>
+        <p>РГК  - радиографический контроль;</p>
+        <p>УЗК  - ультразвуковой контроль;</p>
+        <p>МПД  - магнитопорошковый контроль;</p>
+        <p>+   - контроль производится;</p>
+        <p>-   - контроль не производится;</p>
+        <p>+c  - результаты испытаний подтверждаются сертификатом;</p>",
+        reactive_get_definition_of_designations_for_qa2()),
+        "<p> </p>"
+      )
+    }
+  })
+
+output$download_qa2 <- downloadHandler(
+  filename = function() {
+    paste0('QA2_table_', Sys.Date(), '.csv')
+  },
+  content = function(file) {
+    data <- reactiive_get_welding_and_overaly_table()
+    header <- paste0(reactive_get_header_of_qa2_table(),"\n")
+    bottom <- paste0(
+      "Обозначения:
+      ВК   - входной контроль;
+      ВиК  - визуальный и измерительный контроль;
+      РГК  - радиографический контроль;
+      УЗК  - ультразвуковой контроль;
+      МПД  - магнитопорошковый контроль;
+      +   - контроль производится;
+      +c  - результаты испытаний подтверждаются сертификатом;",
+      "\n",
+      reactive_get_definition_of_designations_for_qa2_file())
+    
+    cat(header, file=file, append = TRUE, sep =";" )
+    write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE, quote = TRUE)
+    cat(bottom, file=file, append = TRUE, sep =";" )
+  }
+)
+
+output$downloadData <- downloadHandler(
+  filename = function() {
+    paste0('QA_table_', Sys.Date(), '.csv')
+  },
+  content = function(file) {
+    data <- reactive_get_oper_table()
+    header <- paste0(reactive_get_header_of_qa_table(),"\n")
+    bottom <- paste0(
+      "Обозначения:
+      РГК  - радиографический контроль;
+      УЗК  - ультразвуковой контроль;
+      МПД  - магнитопорошковый контроль;
+      +   - контроль производится;
+      -   - контроль не производится;
+      +c  - результаты испытаний подтверждаются сертификатом;",
+      "\n",
+      reactive_get_definition_of_designations_for_file())
+    cat(header, file=file, append = TRUE, sep =";" )
+    write.table(data, file=file, append=TRUE, sep=';', row.names = FALSE)
+    cat(bottom, file=file, append = TRUE, sep =";" )
+  }
+)
+
+output$downloadDataDocx <- downloadHandler(
+  filename = function() {
+    paste0('QA_table_', Sys.Date(), '.docx')
+  },
+  content = function(file) {
+    data <- reactive_get_oper_table()
+    parprop <- parProperties(padding = 2)
+    cellprop <- cellProperties( text.direction = "btlr" )
+    data_header <- colnames(data)
+    datadata <- FlexTable(data, header.columns = FALSE) %>% 
+      addHeaderRow( value = c("", "","","Наименование операции"), colspan = c( 1,1,1, 24),
+                    par.properties = parprop, text.properties = textNormal() ) %>% 
+      addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
+    header <- paste0(reactive_get_header_of_qa_table(),"\n")
+    bottom <- paste0(
+      "Обозначения:
+      РГК  - радиографический контроль;
+      УЗК  - ультразвуковой контроль;
+      МПД  - магнитопорошковый контроль;
+      +   - контроль производится;
+      -   - контроль не производится;
+      +c  - результаты испытаний подтверждаются сертификатом;",
+      "\n",
+      reactive_get_definition_of_designations_for_file(),
+      "
+      
+      Настоящую таблицу рассматривать совместно с ОСТ 108.004.10 и комплектом конструкторской документации."
+    )
+    doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
+    writeDoc(doc, file=file )
+  }
+    )
+output$downloadDataDocx_qa2 <- downloadHandler(
+  filename = function() {
+    paste0('QA2_table_', Sys.Date(), '.docx')
+  },
+  content = function(file) {
+    data <- reactiive_get_welding_and_overaly_table()
+    header <- paste0(reactive_get_header_of_qa2_table(),"\n")
+    bottom <- paste0(
+      "Обозначения:
+      ВК   - входной контроль;
+      ВиК  - визуальный и измерительный контроль;
+      РГК  - радиографический контроль;
+      УЗК  - ультразвуковой контроль;
+      МПД  - магнитопорошковый контроль;
+      +   - контроль производится;
+      +c  - результаты испытаний подтверждаются сертификатом;",
+      "\n",
+      reactive_get_definition_of_designations_for_qa2_file(),
+      "
+      
+      Настоящую таблицу рассматривать совместно с ОСТ 108.004.10 и комплектом конструкторской документации."
+    )
+    cellprop <- cellProperties( text.direction = "btlr" )
+    parprop <- parProperties(padding = 2)
+    data_header <- colnames(data)
+    datadata <- FlexTable(data, header.columns = FALSE) %>% 
+      addHeaderRow( value = c("", "","","","","","Наименование операции"), colspan = c( 1,1,1,1,1,1, 19),
+                    par.properties = parprop, text.properties = textNormal() ) %>% 
+      addHeaderRow( value=data_header, cell.properties = cellprop, text.properties = textNormal() )
+    doc <- docx(  ) %>% addParagraph(header) %>% addFlexTable( datadata ) %>% addParagraph(bottom) 
+    writeDoc(doc, file=file )
+  }
+    )
