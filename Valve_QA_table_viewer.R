@@ -536,7 +536,8 @@ server <- function(input, output, session) {
 values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                            stem_force_input_min = 3.33, stem_force_input_max = 180.83,
                            safety_factor_no = "нет", safety_factor_recomended = "20", safety_factor_low = "10",
-                         torque_max = 1200, torque_min = 15, close_time_min = 5, close_time_max = 240)
+                         torque_max = 1200, torque_min = 15, close_time_min = 5, close_time_max = 240,
+                         thread_pitch = 5.08, stem_diameter = 19)
   
   get_safety_factor <- function() {
     
@@ -557,7 +558,16 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       values[["safety_factor_recomended"]] <- 15
       values[["safety_factor_low"]] <- 5
+    } else if ((input$select_valve == "Кран" || 
+                (input$select_valve == "Затвор" && input$select_valve_full == "Затвор дисковый"))
+               && input$control_type == "Электропривод") {
+      
+      values[["safety_factor_recomended"]] <- 20
+      values[["safety_factor_low"]] <- 10
+    
     }
+    
+    
   }
   
   
@@ -717,6 +727,49 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       })
     }
   }
+  
+  
+  get_recomendation_values <- function() {
+    
+    dn <- input$dn_value %>% as.integer()
+    
+    if (dn <= 50) {
+      
+      values[["thread_pitch"]] <- 5.08
+      values[["stem_diameter"]] <- 19
+      
+    } else if (dn <= 80) {
+      
+      values[["thread_pitch"]] <- 5.08
+      values[["stem_diameter"]] <- 25.4
+        
+    } else if (dn <= 150) {
+      
+      values[["thread_pitch"]] <- 5.08
+      values[["stem_diameter"]] <- 28.6
+        
+    } else if (dn <= 250) {
+      
+      values[["thread_pitch"]] <- 5.08
+      values[["stem_diameter"]] <- 38.1
+        
+    } else if (dn <= 500) {
+      
+      values[["thread_pitch"]] <- 6.35
+      values[["stem_diameter"]] <- 44.4
+        
+    } else {
+      
+      values[["thread_pitch"]] <- 12.7
+      values[["stem_diameter"]] <- 108
+        
+    }
+  }
+  
+  
+  observeEvent(input$dn_value, {
+    get_recomendation_values()
+    })
   
 
   observeEvent(input$select_el_drive_btn, {
@@ -987,8 +1040,13 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         (input$select_valve == "Затвор" && input$select_valve_full == "Затвор дисковый"))) {
       
       time <- input$close_time
+      
       x <- get_eldrive(con, type = input$el_drive_type, torque = torque, time = time)
       
+      closeAlert(session, alertId = "torque_info_alert")
+      createAlert(session,"torque_info", alertId = "torque_info_alert",
+                  content = HTML(paste0("<b><p>Расчётный момент составляет ",torque," Нм</b></p>")) ,
+                  style = "info", dismiss = FALSE, append = FALSE)
       return(x)
     }
       
@@ -1022,6 +1080,9 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         # Пределы регулирования муфты ограничения кутящего момента
         if (input$force_input_type == "усилию на штоке") {
           
+          # from кН to H and adding safety factor to force
+          stem_force <- as.integer(input$stem_force * 1000) * safety_factor
+          
           torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                         (pi *  stem_diameter) + 0.144) / 1000
           
@@ -1029,7 +1090,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
           
         } else {
           
-          torque <- input$torque_input
+          torque <- input$torque_input * safety_factor
           
         }
         
@@ -1453,16 +1514,22 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     renderUI({
       if (input$LE_module == FALSE || input$el_drive_type == "SARI" || length(input$LE_module) == 0) {
           fluidPage(
-                 numericInput("thread_pitch", "Шаг резьбы [мм]",value = 8, min = 1.0, max = 15.5,
+                 numericInput("thread_pitch", "Шаг резьбы [мм]",value = values$thread_pitch, min = 1.0, max = 15.5,
                               width = "100%", step = 0.1),
-                 numericInput("stem_diameter", "Диаметр штока [мм]",value = 20, min = 12, max = 800,
+                 numericInput("stem_diameter", "Диаметр штока [мм]",value = values$stem_diameter, min = 12, max = 800,
                               width = "100%", step = 0.1),
-                 numericInput("multithread", "Многозаходность",value = 2, min = 1, max = 3, width = "100%"),
+                 verticalLayout(
+                   numericInput("multithread", "Многозаходность",value = 1, min = 1, max = 3, width = "100%"),
+                   bsTooltip(id = "multithread", title = "от 1 до 3", 
+                             placement = "left", trigger = "focus"),
+                   bsPopover(id = "multithread",
+                             title = HTML(paste0('<font color="black">Для увеличения скорости закрытия рекомендуется ',
+                                                 'многозаходность 2-3</font>')),
+                             content = "", trigger = "focus", options = NULL)
+                 ),
           bsTooltip(id = "thread_pitch", title = "от 1,0 до 15,5 мм", 
                     placement = "left", trigger = "focus"),
           bsTooltip(id = "stem_diameter", title = "от 12 до 800 мм", 
-                    placement = "left", trigger = "focus"),
-          bsTooltip(id = "multithread", title = "от 1 до 3", 
                     placement = "left", trigger = "focus")
         )
       }
