@@ -539,6 +539,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                          torque_max = 1200, torque_min = 15, close_time_min = 5, close_time_max = 240,
                          thread_pitch = 5.08, stem_diameter = 19, recom_msg_thread_pitch = "",
                          recom_msg_stem_diameter = "")
+
   
   get_safety_factor <- function() {
     
@@ -652,6 +653,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
   
   
   get_torque_boundary <- function() {
+
     
     if (input$main_menu == "el_drive" && length(input$main_menu != 0)) {
       
@@ -763,17 +765,17 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       values[["thread_pitch"]] <- 12.7
       values[["stem_diameter"]] <- 108
-        
     }
     
     values[["recom_msg_thread_pitch"]] <- paste0('при dn=', dn, ' рекомендованный шаг резьбы составляет ', 
                                     values[["thread_pitch"]], ' мм')
     values[["recom_msg_stem_diameter"]] <- paste0('при dn=', dn, ' рекомендованный диаметр штока ', 
                                                  values[["stem_diameter"]], ' мм')
-    
-     
-  }
-  
+    }
+
+        
+
+ 
   
   observeEvent(input$dn_value, {
     get_recomendation_values()
@@ -785,6 +787,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     str <- ""
     
     if (input$force_input_type == "усилию на штоке") {
+
       
       get_stem_force_boundary()
   
@@ -845,6 +848,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
       }
       
+
       
       if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
         
@@ -855,6 +859,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke) ||
           input$stem_stroke < 10 || input$stem_stroke > 800) {
         
+
         str <- paste0(str,"<p>   -хода штока</p>")
         
       } 
@@ -890,7 +895,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         } 
       }
       
-      
+     
       
       if (str != "") {
         
@@ -968,20 +973,57 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                       style = "warning", dismiss = FALSE, append = FALSE)
           
         }
+
         
+        if (torque < torque_lower_lim && input$reducer_checkbox == TRUE) {
+          
+          # updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
+          createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
+                      content = HTML("<b><p>При данном усилии на штоке редуктор не требуется</b></p>") ,
+                      style = "warning", dismiss = FALSE, append = FALSE)
+          
+        } else if (torque > 6000 && input$reducer_checkbox == FALSE) {
+          
+          # updateCheckboxInput(session, "reducer_checkbox", value = TRUE)
+          createAlert(session,"reducer_corretion", alertId = "reducer_corretion_alert",
+                      content = HTML("<b><p>При данном усилии на штоке необходим редуктор</b></p>") ,
+                      style = "warning", dismiss = FALSE, append = FALSE)
+          
+        }
+
+      } else if (input$el_drive_type == "SAI" && input$select_valve == "Задвижка") {
+        torque_lower_lim <- 500
       }
+  
+      stem_stroke <- input$stem_stroke
+      # from кН to H and adding safety factor to force
+      stem_force <- as.integer(input$stem_force * 1000) * safety_factor
+      # Шаг резьбы [мм]
+      thread_pitch <- input$thread_pitch
+      # Диаметр штока [мм]
+      stem_diameter <- input$stem_diameter
+      # Многозаходность
+      multithread <- input$multithread
+      # Пределы регулирования муфты ограничения кутящего момента
+      torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
+                                                    (pi *  stem_diameter) + 0.144) / 1000
       
+      torque <- round_any(torque,10, ceiling) %>% as.integer()
+      
+
       
       if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
         
+
         str <- paste0(str,"<p>   -времени закрытия</p>")
         
       } 
 
       
+
       if (is.na(input$torque_input) || !is.numeric(input$torque_input) || torque >  values$torque_max ||
           torque < values$torque_min) {
-        
+
         str <- paste0(str,"<p>   -момента</p>")
         
       } 
@@ -1046,15 +1088,17 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     
     if ((input$select_valve == "Кран" || 
         (input$select_valve == "Затвор" && input$select_valve_full == "Затвор дисковый"))) {
-      
+
       time <- input$close_time
       
+
       x <- get_eldrive(con, type = input$el_drive_type, torque = torque, time = time)
       
       closeAlert(session, alertId = "torque_info_alert")
       createAlert(session,"torque_info", alertId = "torque_info_alert",
                   content = HTML(paste0("<b><p>Расчётный момент составляет ",torque," Нм</b></p>")) ,
                   style = "info", dismiss = FALSE, append = FALSE)
+
       return(x)
     }
       
@@ -1092,8 +1136,10 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
           stem_force <- as.integer(input$stem_force * 1000) * safety_factor
           
           torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
+
                                                         (pi *  stem_diameter) + 0.144) / 1000
           
+
           torque <- round_any(torque,10, ceiling) %>% as.integer()
           
         } else {
@@ -1545,6 +1591,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                                                  'многозаходность 2-3</font>')),
                              content = "", trigger = "focus", options = NULL)
             )
+
         )
       }
     })
