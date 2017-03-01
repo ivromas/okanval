@@ -537,8 +537,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                            stem_force_input_min = 3.33, stem_force_input_max = 180.83,
                            safety_factor_no = "нет", safety_factor_recomended = "20", safety_factor_low = "10",
                          torque_max = 1200, torque_min = 15, close_time_min = 5, close_time_max = 240,
-                         thread_pitch = 5.08, stem_diameter = 19, recom_msg_thread_pitch = "",
-                         recom_msg_stem_diameter = "")
+                         thread_pitch = 5.08, stem_diameter = 19)
   
   get_safety_factor <- function() {
     
@@ -765,15 +764,6 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       values[["stem_diameter"]] <- 108
         
     }
-    
-    values[["recom_msg_thread_pitch"]] <- paste0('при dn=', dn, ' рекомендованный шаг резьбы составляет ', 
-                                    values[["thread_pitch"]], ' мм')
-    values[["recom_msg_stem_diameter"]] <- paste0('при dn=', dn, ' рекомендованный диаметр штока ', 
-                                                 values[["stem_diameter"]], ' мм')
-    
-    print(values[["recom_msg_thread_pitch"]])
-    print(values[["recom_msg_stem_diameter"]])
-     
   }
   
   
@@ -1524,29 +1514,23 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     renderUI({
       if (input$LE_module == FALSE || input$el_drive_type == "SARI" || length(input$LE_module) == 0) {
           fluidPage(
-            verticalLayout(
                  numericInput("thread_pitch", "Шаг резьбы [мм]",value = values$thread_pitch, min = 1.0, max = 15.5,
                               width = "100%", step = 0.1),
-                 bsTooltip(id = "thread_pitch", title = HTML(paste0('<font color="white"><p>от 1,0 до 15,5 мм</p>',
-                                                                    values[["recom_msg_thread_pitch"]], '</font>')), 
-                           placement = "left", trigger = "focus")
-            ),
-            verticalLayout(
                  numericInput("stem_diameter", "Диаметр штока [мм]",value = values$stem_diameter, min = 12, max = 800,
                               width = "100%", step = 0.1),
-                 bsTooltip(id = "stem_diameter", title = HTML(paste0('<font color="white"><p>от 12 до 800 мм</p>',
-                                                                values[["recom_msg_stem_diameter"]], '</font>')),
-                           , placement = "left", trigger = "focus")
-            ),
-            verticalLayout(
-                numericInput("multithread", "Многозаходность",value = 1, min = 1, max = 3, width = "100%"),
-                bsTooltip(id = "multithread", title = "от 1 до 3", 
+                 verticalLayout(
+                   numericInput("multithread", "Многозаходность",value = 1, min = 1, max = 3, width = "100%"),
+                   bsTooltip(id = "multithread", title = "от 1 до 3", 
                              placement = "left", trigger = "focus"),
-                bsPopover(id = "multithread",
+                   bsPopover(id = "multithread",
                              title = HTML(paste0('<font color="black">Для увеличения скорости закрытия рекомендуется ',
                                                  'многозаходность 2-3</font>')),
                              content = "", trigger = "focus", options = NULL)
-            )
+                 ),
+          bsTooltip(id = "thread_pitch", title = "от 1,0 до 15,5 мм", 
+                    placement = "left", trigger = "focus"),
+          bsTooltip(id = "stem_diameter", title = "от 12 до 800 мм", 
+                    placement = "left", trigger = "focus")
         )
       }
     })
