@@ -771,8 +771,6 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
     values[["recom_msg_stem_diameter"]] <- paste0('при dn=', dn, ' рекомендованный диаметр штока ', 
                                                  values[["stem_diameter"]], ' мм')
     
-    print(values[["recom_msg_thread_pitch"]])
-    print(values[["recom_msg_stem_diameter"]])
      
   }
   
@@ -1536,7 +1534,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                               width = "100%", step = 0.1),
                  bsTooltip(id = "stem_diameter", title = HTML(paste0('<font color="white"><p>от 12 до 800 мм</p>',
                                                                 values[["recom_msg_stem_diameter"]], '</font>')),
-                           , placement = "left", trigger = "focus")
+                           placement = "left", trigger = "focus")
             ),
             verticalLayout(
                 numericInput("multithread", "Многозаходность",value = 1, min = 1, max = 3, width = "100%"),
