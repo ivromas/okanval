@@ -525,13 +525,16 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       
       
       if (is.na(input$close_time) || !is.numeric(input$close_time) || input$close_time < 5 ||  input$close_time > 240) {
+
         
         str <- paste0(str,"<p>   -времени закрытия</p>")
         
+
       } 
       
       if (is.na(input$stem_stroke) || !is.numeric(input$stem_stroke) ||
           input$stem_stroke < 10 || input$stem_stroke > 800) {
+
         
         str <- paste0(str,"<p>   -хода штока</p>")
         
@@ -628,9 +631,10 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       torque <- round_any(torque,10, ceiling) %>% as.integer()
       
       if (input$select_valve == "Задвижка") {
-        
+
         closeAlert(session, "reducer_corretion_alert")
         
+
         if (torque < torque_lower_lim && input$reducer_checkbox == TRUE) {
           
           # updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
@@ -763,7 +767,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
           
           torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
                                                         (pi *  stem_diameter) + 0.144) / 1000
-          
+
           torque <- round_any(torque,10, ceiling) %>% as.integer()
           
         } else {
