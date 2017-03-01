@@ -538,6 +538,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                            safety_factor_no = "нет", safety_factor_recomended = "20", safety_factor_low = "10",
                          torque_max = 1200, torque_min = 15, close_time_min = 5, close_time_max = 240,
                          thread_pitch = 5.08, stem_diameter = 19)
+
   
   get_safety_factor <- function() {
     
@@ -814,6 +815,76 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
                                                     (pi *  stem_diameter) + 0.144) / 1000
       
       torque <- round_any(torque,10, ceiling) %>% as.integer()
+     
+          torque_max_local <- 3200
+          torque_min_local <- 15
+          # print("sari")
+        } else if (input$el_drive_type == "SG") {
+          
+          torque_max_local <- 1200
+          torque_min_local <- 100
+          close_time_min_local <- 4
+          close_time_max_local <- 63
+          # print("sari")
+        }
+        # print(torque_max_local)
+        # print(torque_min_local)
+        # print(safety_factor)
+        
+        values$close_time_min <- close_time_min_local
+        values$close_time_max <- close_time_max_local
+        values$torque_max <- round(torque_max_local / safety_factor)
+        values$torque_min <- round(torque_min_local / safety_factor)
+# 
+#         print(values$torque_max)
+#         print(values$torque_min)
+      })
+    }
+  }
+  
+
+  observeEvent(input$select_el_drive_btn, {
+    
+    str <- ""
+    
+    if (input$force_input_type == "усилию на штоке") {
+      
+      get_stem_force_boundary()
+  
+  
+      if (input$safety_factor_select == "нет") {
+        
+        safety_factor <- 1      
+  
+      } else {
+        
+        safety_factor <- input$safety_factor_select %>% as.integer()
+        
+        safety_factor <- safety_factor / 100 + 1
+        
+      }
+      
+   
+      if (input$el_drive_type == "SA" && input$select_valve == "Задвижка") {
+        torque_lower_lim <- 60
+      } else if (input$el_drive_type == "SAI" && input$select_valve == "Задвижка") {
+        torque_lower_lim <- 500
+      }
+  
+      stem_stroke <- input$stem_stroke
+      # from кН to H and adding safety factor to force
+      stem_force <- as.integer(input$stem_force * 1000) * safety_factor
+      # Шаг резьбы [мм]
+      thread_pitch <- input$thread_pitch
+      # Диаметр штока [мм]
+      stem_diameter <- input$stem_diameter
+      # Многозаходность
+      multithread <- input$multithread
+      # Пределы регулирования муфты ограничения кутящего момента
+      torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
+                                                    (pi *  stem_diameter) + 0.144) / 1000
+      
+      torque <- round_any(torque,10, ceiling) %>% as.integer()
       
       if (input$select_valve == "Задвижка") {
         
@@ -874,6 +945,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
           
         } 
         
+
         if (is.na(input$multithread) || !is.numeric(input$multithread) || input$multithread < 1 || 
             input$multithread > 3) {
           
@@ -945,6 +1017,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
         
         closeAlert(session, "reducer_corretion_alert")
         
+
         if (torque < torque_lower_lim && input$reducer_checkbox == TRUE) {
           
           # updateCheckboxInput(session, "reducer_checkbox", value = FALSE)
@@ -1047,6 +1120,7 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
       createAlert(session,"torque_info", alertId = "torque_info_alert",
                   content = HTML(paste0("<b><p>Расчётный момент составляет ",torque," Нм</b></p>")) ,
                   style = "info", dismiss = FALSE, append = FALSE)
+
       return(x)
     }
       
@@ -1084,8 +1158,8 @@ values <- reactiveValues(stem_force_min = 3330, stem_force_max = 180830,
           stem_force <- as.integer(input$stem_force * 1000) * safety_factor
           
           torque <- stem_force * stem_diameter / 2 * (multithread * thread_pitch / 
-                                                        (pi *  stem_diameter) + 0.144) / 1000
-          
+                                                        (pi *  stem_diameter) + 0.144) / 1000          
+
           torque <- round_any(torque,10, ceiling) %>% as.integer()
           
         } else {
